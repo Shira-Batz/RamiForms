@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>מילוי טפסי רמ"י</title>
+    <style>
+        :root {
+            --primary: #0284c7;
+            --bg: #f8fafc;
+            --surface: #ffffff;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: system-ui, sans-serif;
+            background: var(--bg);
+            margin: 0;
+            padding: 20px;
+            color: #333;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: var(--surface);
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        }
+
+        h1 {
+            text-align: center;
+            color: #0f172a;
+            margin-bottom: 30px;
+        }
+
+        .section-title {
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+            color: #1e293b;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        label {
+            font-weight: 500;
+            margin-bottom: 5px;
+            font-size: 14px;
+            color: #475569;
+        }
+
+        input[type="text"] {
+            padding: 10px;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        button {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 15px;
+            width: 100%;
+            border-radius: 8px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #0369a1;
+        }
+
+        .instructions {
+            font-size: 14px;
+            background: #e0f2fe;
+            padding: 15px;
+            border-radius: 8px;
+            border-right: 4px solid #0284c7;
+            margin-top: 20px;
+            line-height: 1.6;
+        }
+
+        .back {
+            color: var(--primary);
+            text-decoration: none;
+            font-size: 14px;
+        }
+
+        code {
+            background: #bae6fd;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+    </style>
+    <!-- ספריות PDF -->
+    <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+    <script src="https://unpkg.com/@pdf-lib/fontkit@0.0.4/dist/fontkit.umd.min.js"></script>
+    <!-- אלגוריתם הכיווניות של יוניקוד (סידור טקסט מעורב עברית/מספרים/אנגלית) -->
+    <script src="https://unpkg.com/bidi-js@1.0.3/dist/bidi.min.js"></script>
+</head>
+
+<body>
+    <div class="container">
+        <a href="index.html" class="back">→ חזרה לדף הבית</a>
+        <h1 id="pageTitle">מילוי אוטומטי של טפסי רמ"י</h1>
+        <!-- <div class="instructions">
+            <strong>הוראות עבודה:</strong><br>
+            1. שמרי את הקובץ הזה (HTML) בתיקייה חדשה.<br>
+            2. העבירי לאותה התיקייה בדיוק את 5 קובצי ה-PDF המקוריים ושני את שמם כך:<br>
+            <code>form1.pdf</code> (הצהרת בעלי זכויות)<br>
+            <code>form2.pdf</code> (בקשה להקצאת קרקע)<br>
+            <code>form3.pdf</code> (תוספת בנייה)<br>
+            <code>form4.pdf</code> (ייפוי כוח)<br>
+            <code>form5.pdf</code> (תצהיר המבקש)<br>
+            3. <strong>חובה להפעיל את הקובץ דרך שרת מקומי</strong> (למשל תוסף Live Server ב-VS Code) כדי שהדפדפן יסכים
+            למשוך את הקבצים.
+        </div> -->
+
+        <div class="grid">
+            <div class="form-group"><label>שם פרטי 1</label><input type="text" id="firstName1"></div>
+            <div class="form-group"><label>שם משפחה 1</label><input type="text" id="lastName1"></div>
+            <div class="form-group"><label>תעודת זהות 1</label><input type="text" id="idNum1"></div>
+            <div class="form-group"><label>שם פרטי 2</label><input type="text" id="firstName2"></div>
+            <div class="form-group"><label>שם משפחה 2</label><input type="text" id="lastName2"></div>
+            <div class="form-group"><label>תעודת זהות 2</label><input type="text" id="idNum2"></div>
+            <div class="form-group"><label>מספר חוזה</label><input type="text" id="contractNum"></div>
+            <div class="form-group"><label>יישוב</label><input type="text" id="city"></div>
+            <div class="form-group"><label>רחוב</label><input type="text" id="street"></div>
+            <div class="form-group"><label>מספר בית</label><input type="text" id="houseNum"></div>
+            <div class="form-group"><label>מספר משק</label><input type="text" id="farmNum"></div>
+            <div class="form-group"><label>ת.ד</label><input type="text" id="mailBox"></div>
+            <div class="form-group"><label>מיקוד</label><input type="text" id="zipCode"></div>
+            <div class="form-group"><label>גוש</label><input type="text" id="block"></div>
+            <div class="form-group"><label>חלקה</label><input type="text" id="parcel"></div>
+            <div class="form-group"><label>מגרש</label><input type="text" id="plot"></div>
+            <div class="form-group"><label>תוכנית מפורטת</label><input type="text" id="plan"></div>
+            <div class="form-group"><label>מרחב מטפל</label><input type="text" id="region"></div>
+            <div class="form-group"><label>שטח חלקה (מ"ר)</label><input type="text" id="totalArea"></div>
+            <div class="form-group"><label>שטח מגורים (מ"ר)</label><input type="text" id="livingArea"></div>
+            <div class="form-group"><label>דואר אלקטרוני</label><input type="text" id="email" value="info@apv.co.il">
+            </div>
+        </div>
+
+        <button id="generateBtn" onclick="generatePDFs()">מלא והורד את כל הטפסים</button>
+    </div>
+
+    <script>
+        // שני האתרים משתמשים באותו טופס ובאותן קואורדינטות, ההבדל הוא רק בקבצי ה-PDF
+        const SITES = {
+            rami: { title: 'מילוי אוטומטי של טפסי רמ"י', folder: 'rami', filePrefix: '' },
+            agro: { title: 'מילוי אוטומטי של טפסי רמ"י - אגרו וולטאי', folder: 'agro', filePrefix: 'אגרו_' }
+        };
+        const site = SITES[new URLSearchParams(location.search).get('site')] || SITES.rami;
+        document.title = site.title;
+        document.getElementById('pageTitle').innerText = site.title;
+
+        const bidi = bidi_js();
+        const HEBREW = /[\u0590-\u05FF]/;
+
+        // ממיר טקסט מהסדר הלוגי (כפי שהוקלד) לסדר הוויזואלי משמאל לימין,
+        // לפי אלגוריתם הכיווניות של יוניקוד: עברית מתהפכת, מספרים ואנגלית נשארים בכיוונם,
+        // וסוגריים מתחלפים ( <-> ) בתוך הקטעים העבריים.
+        function toVisual(str) {
+            if (!HEBREW.test(str)) return str;
+            const levels = bidi.getEmbeddingLevels(str, 'rtl');
+            const chars = str.split('');
+            bidi.getMirroredCharactersMap(str, levels.levels).forEach((ch, i) => { chars[i] = ch; });
+            bidi.getReorderSegments(str, levels).forEach(([start, end]) => {
+                chars.splice(start, end - start + 1, ...chars.slice(start, end + 1).reverse());
+            });
+            return chars.join('');
+        }
+
+        // fontkit הופך בעצמו את כל המחרוזת כשהאות הראשונה בה עברית (כולל המספרים - זה מקור הבאג).
+        // לכן מציירים את הטקסט הוויזואלי בחלקים: חלק עברי (ללא אותיות לטיניות) נשלח הפוך
+        // ו-fontkit מחזיר אותו לסדר הנכון, וחלק ללא עברית נשלח כמו שהוא.
+        function drawVisualText(page, text, x, y, size, font, color) {
+            const visual = toVisual(text);
+            const chunks = visual.match(/[\u0590-\u05FF](?:[^A-Za-z\u00C0-\u024F]*[\u0590-\u05FF])?|[^\u0590-\u05FF]+/g) || [];
+            for (const chunk of chunks) {
+                const toDraw = HEBREW.test(chunk) ? [...chunk].reverse().join('') : chunk;
+                page.drawText(toDraw, { x, y, size, font, color });
+                x += font.widthOfTextAtSize(chunk, size);
+            }
+        }
+
+        function withUnit(value, unit) {
+            return value ? `${value} ${unit}` : '';
+        }
+
+        async function fetchLocalFile(filename) {
+            const response = await fetch(filename);
+            if (!response.ok) throw new Error(`לא הצלחנו לטעון את הקובץ: ${filename}`);
+            return await response.arrayBuffer();
+        }
+
+        async function generatePDFs() {
+            const btn = document.getElementById('generateBtn');
+            btn.innerText = 'מייצר טפסים... נא להמתין';
+            btn.disabled = true;
+
+            // כל שדה בטופס נשמר לפי ה-id שלו (d.city, d.street וכו')
+            const d = {};
+            document.querySelectorAll('.grid input').forEach(input => {
+                d[input.id] = input.value.trim();
+            });
+            d.fullName1 = `${d.firstName1} ${d.lastName1}`.trim();
+            d.fullName2 = `${d.firstName2} ${d.lastName2}`.trim();
+            d.totalArea = withUnit(d.totalArea, 'מ"ר');
+            d.livingArea = withUnit(d.livingArea, 'מ"ר');
+
+            try {
+                const fontBytes = await fetchLocalFile('font.ttf');
+                const { PDFDocument, rgb } = PDFLib;
+
+                const drawField = (page, text, x, y, font) => {
+                    if (text) drawVisualText(page, text, x, 842 - y, 10, font, rgb(0, 0, 0));
+                };
+
+                const processForm = async (inputName, outputName, mappingFields) => {
+                    try {
+                        const pdfBytes = await fetchLocalFile(`${site.folder}/${inputName}`);
+                        const pdfDoc = await PDFDocument.load(pdfBytes);
+                        pdfDoc.registerFontkit(window.fontkit);
+                        const customFont = await pdfDoc.embedFont(fontBytes);
+                        const pages = pdfDoc.getPages(); // מביא את כל העמודים בטופס
+
+                        mappingFields.forEach(field => {
+                            // אם הגדרנו 'page: 1' הוא ייקח את העמוד השני, אחרת ייקח את העמוד הראשון (0)
+                            const targetPage = pages[field.page || 0];
+                            drawField(targetPage, field.value, field.x, field.y, customFont);
+                        });
+
+                        const outBytes = await pdfDoc.save();
+                        const blob = new Blob([outBytes], { type: "application/pdf" });
+                        const link = document.createElement('a');
+                        link.href = URL.createObjectURL(blob);
+                        link.download = site.filePrefix + outputName;
+                        link.click();
+                    } catch (e) {
+                        console.warn(`דילוג על ${inputName}: `, e);
+                    }
+                };
+
+                // =========================================================
+                // מיפויי קואורדינטות - יש לשנות את ערכי ה-X וה-Y כאן בהתאם לטופס שלך
+                // נקודת ה-(0,0) היא הפינה השמאלית-תחתונה של הדף
+                // =========================================================
+
+                // 1. הצהרת בעלי הזכויות (form1.pdf)
+                await processForm('form1.pdf', '1_הצהרת_בעלי_זכויות_ממולא.pdf', [
+                    { name: 'יישוב', value: d.city, x: 466, y: 126 },
+                    { name: 'רחוב', value: d.street, x: 333, y: 126 },
+                    { name: 'מספר משק', value: d.farmNum, x: 255, y: 126 },
+                    { name: 'ת.ד', value: d.mailBox, x: 170, y: 126 },
+                    { name: 'מיקוד', value: d.zipCode, x: 68, y: 126 },
+                    { name: 'גוש', value: d.block, x: 482, y: 157 },
+                    { name: 'חלקה', value: d.parcel, x: 405, y: 157 },
+                    { name: 'מגרש', value: d.plot, x: 335, y: 157 },
+                    { name: 'תוכנית מתאר', value: d.plan, x: 190, y: 157 },
+                    { name: 'מספר חוזה', value: d.contractNum, x: 62, y: 157 },
+                    { name: 'מרחב מטפל', value: d.region, x: 482, y: 185 },
+                    { name: 'שם מגיש הבקשה 1', value: d.fullName1, x: 231, y: 278 },
+                    { name: 'שם מגיש הבקשה 2', value: d.fullName2, x: 55, y: 278 }
+                ]);
+
+                // 2. בקשה להקצאת קרקע (form2.pdf)
+                await processForm('form2.pdf', '2_בקשה_להקצאת_קרקע_ממולא.pdf', [
+                    { name: 'מספר חוזה', value: d.contractNum, x: 350, y: 196 },
+                    { name: 'שם פרטי 1', value: d.firstName1, x: 488, y: 242 },
+                    { name: 'שם משפחה 1', value: d.lastName1, x: 402, y: 242 },
+                    { name: 'ת.ז 1', value: d.idNum1, x: 175, y: 216 },
+                    { name: 'שם פרטי 2', value: d.firstName2, x: 488, y: 298 },
+                    { name: 'שם משפחה 2', value: d.lastName2, x: 402, y: 298 },
+                    { name: 'ת.ז 2', value: d.idNum2, x: 175, y: 271 },
+                    { name: 'יישוב', value: d.city, x: 448, y: 367 },
+                    { name: 'רחוב', value: d.street, x: 330, y: 367 },
+                    { name: 'מספר בית', value: d.houseNum, x: 266, y: 367 },
+                    { name: 'מיקוד', value: d.zipCode, x: 128, y: 367 },
+                    { name: 'ת.ד', value: d.mailBox, x: 42, y: 367 },
+                    { name: 'מייל', value: d.email, x: 383, y: 406 },
+                    { name: 'סעיף ג - יישוב', value: d.city, x: 408, y: 653 },
+                    { name: 'סעיף ג - מספר משק', value: d.farmNum, x: 308, y: 653 },
+                    { name: 'סעיף ג - גודל חלקה', value: d.livingArea, x: 192, y: 653 },
+                    { name: 'סעיף ג - גוש', value: d.block, x: 504, y: 686 },
+                    { name: 'סעיף ג - חלקה', value: d.parcel, x: 440, y: 686 }
+                ]);
+
+                // 3. תוספת בנייה (form3.pdf)
+                await processForm('form3.pdf', '3_תוספת_בנייה_ממולא.pdf', [
+                    { name: 'מספר חוזה', value: d.contractNum, x: 30, y: 117 },
+                    { name: 'שם פרטי 1', value: d.firstName1, x: 448, y: 203 },
+                    { name: 'שם משפחה 1', value: d.lastName1, x: 300, y: 203 },
+                    { name: 'ת.ז 1', value: d.idNum1, x: 130, y: 203 },
+                    { name: 'שם פרטי 2', value: d.firstName2, x: 448, y: 215 },
+                    { name: 'שם משפחה 2', value: d.lastName2, x: 300, y: 215 },
+                    { name: 'ת.ז 2', value: d.idNum2, x: 130, y: 215 },
+                    { name: 'יישוב', value: d.city, x: 450, y: 266 },
+                    { name: 'רחוב', value: d.street, x: 295, y: 266 },
+                    { name: 'מספר', value: d.houseNum, x: 184, y: 266 },
+                    { name: 'מיקוד', value: d.zipCode, x: 42, y: 266 },
+                    { name: 'מייל', value: d.email, x: 366, y: 314 },
+                    { name: 'סעיף ה - גוש', value: d.block, x: 480, y: 85, page: 1 },
+                    { name: 'סעיף ה - חלקה', value: d.parcel, x: 370, y: 85, page: 1 },
+                    { name: 'סעיף ה - מגרש', value: d.plot, x: 184, y: 85, page: 1 },
+                    { name: 'סעיף ה - מס תוכנית', value: d.plan, x: 52, y: 85, page: 1 },
+                    { name: 'סעיף ה - יישוב', value: d.city, x: 464, y: 111, page: 1 },
+                    { name: 'סעיף ה - רחוב', value: d.street, x: 310, y: 111, page: 1 },
+                    { name: 'סעיף ה - מספר', value: d.houseNum, x: 185, y: 111, page: 1 },
+                    { name: 'סעיף ה - מיקוד', value: d.zipCode, x: 72, y: 111, page: 1 }
+                ]);
+
+                // 4. ייפוי כוח (form4.pdf)
+                await processForm('form4.pdf', '4_ייפוי_כוח_ממולא.pdf', [
+                    { name: 'מספר חוזה', value: d.contractNum, x: 22, y: 84 },
+                    { name: 'שם פרטי 1', value: d.firstName1, x: 460, y: 494 },
+                    { name: 'שם משפחה 1', value: d.lastName1, x: 312, y: 494 },
+                    { name: 'תעודת זהות 1', value: d.idNum1, x: 190, y: 494 },
+                    { name: 'שם פרטי 2', value: d.firstName2, x: 460, y: 514 },
+                    { name: 'שם משפחה 2', value: d.lastName2, x: 312, y: 514 },
+                    { name: 'תעודת זהות 2', value: d.idNum2, x: 190, y: 514 },
+                    { name: 'יישוב', value: d.city, x: 460, y: 557 },
+                    { name: 'רחוב', value: d.street, x: 300, y: 557 },
+                    { name: 'מספר', value: d.houseNum, x: 186, y: 557 },
+                    { name: 'מיקוד', value: d.zipCode, x: 45, y: 557 },
+                    { name: 'מייל', value: d.email, x: 355, y: 597 },
+                    { name: 'סעיף ג - גוש', value: d.block, x: 475, y: 681 },
+                    { name: 'סעיף ג - חלקה', value: d.parcel, x: 375, y: 681 },
+                    { name: 'סעיף ג - מגרש', value: d.plot, x: 185, y: 681 },
+                    { name: 'סעיף ג - תוכנית', value: d.plan, x: 54, y: 681 },
+                    { name: 'סעיף ג - עיר', value: d.city, x: 475, y: 707 },
+                    { name: 'סעיף ג - רחוב', value: d.street, x: 326, y: 707 },
+                    { name: 'סעיף ג - מספר', value: d.houseNum, x: 185, y: 707 },
+                    { name: 'סעיף ג - מיקוד', value: d.zipCode, x: 54, y: 707 }
+                ]);
+
+                // 5. תצהיר המבקש (form5.pdf)
+                await processForm('form5.pdf', '5_תצהיר_המבקש_ממולא.pdf', [
+                    { name: 'מספר חוזה', value: d.contractNum, x: 48, y: 196 },
+                    { name: 'שם פרטי 1', value: d.firstName1, x: 498, y: 292 },
+                    { name: 'שם משפחה 1', value: d.lastName1, x: 412, y: 292 },
+                    { name: 'תעודת זהות 1', value: d.idNum1, x: 185, y: 255 },
+                    { name: 'שם פרטי 2', value: d.firstName2, x: 498, y: 360 },
+                    { name: 'שם משפחה 2', value: d.lastName2, x: 412, y: 360 },
+                    { name: 'תעודת זהות 2', value: d.idNum2, x: 185, y: 326 },
+                    { name: 'יישוב', value: d.city, x: 480, y: 471 },
+                    { name: 'רחוב', value: d.street, x: 365, y: 471 },
+                    { name: 'מספר', value: d.houseNum, x: 284, y: 471 },
+                    { name: 'מיקוד', value: d.zipCode, x: 60, y: 471 },
+                    { name: 'תוכנית', value: d.plan, x: 472, y: 511 },
+                    { name: 'מגרש', value: d.plot, x: 375, y: 511 },
+                    { name: 'שטח', value: d.totalArea, x: 250, y: 511 },
+                    { name: 'משק', value: d.farmNum, x: 108, y: 511 },
+                    { name: 'גוש', value: d.block, x: 502, y: 555 },
+                    { name: 'חלקה', value: d.parcel, x: 418, y: 555 }
+                ]);
+
+                alert("הטפסים הוכנו. במידה והשמות של ה-PDF תאמו, הם יורדו אוטומטית.");
+            } catch (error) {
+                console.error(error);
+                alert("אירעה שגיאה. פרטים ב-Console.");
+            } finally {
+                btn.innerText = 'מלא והורד את כל הטפסים';
+                btn.disabled = false;
+            }
+        }
+    </script>
+</body>
+
+</html>
