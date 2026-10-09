@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>מילוי טפסי ועדה - עומר</title>
+    <style>
+        :root {
+            --primary: #0284c7;
+            --bg: #f8fafc;
+            --surface: #ffffff;
+            --border: #cbd5e1;
+            --muted: #64748b;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: system-ui, sans-serif;
+            background: var(--bg);
+            margin: 0;
+            padding: 20px;
+            color: #333;
+        }
+
+        .container {
+            max-width: 960px;
+            margin: 0 auto;
+            background: var(--surface);
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        }
+
+        h1 {
+            text-align: center;
+            color: #0f172a;
+            margin-bottom: 30px;
+        }
+
+        h2 {
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 10px;
+            margin: 30px 0 15px;
+            color: #1e293b;
+            font-size: 20px;
+        }
+
+        h3 {
+            margin: 25px 0 10px;
+            color: #334155;
+            font-size: 16px;
+        }
+
+        .hint {
+            color: var(--muted);
+            font-size: 14px;
+        }
+
+        /* בחירת טפסים */
+        .stages {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 15px;
+        }
+
+        .stage {
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 12px 15px;
+        }
+
+        .stage-title {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+
+        .stage-title button {
+            background: none;
+            border: none;
+            color: var(--primary);
+            cursor: pointer;
+            font-size: 13px;
+            padding: 0;
+        }
+
+        .form-option {
+            display: flex;
+            gap: 8px;
+            align-items: flex-start;
+            font-size: 14px;
+            padding: 4px 0;
+            cursor: pointer;
+        }
+
+        .form-option input {
+            margin-top: 3px;
+        }
+
+        .form-id {
+            font-weight: bold;
+            white-space: nowrap;
+        }
+
+        /* שדות */
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        label {
+            font-weight: 500;
+            margin-bottom: 5px;
+            font-size: 14px;
+            color: #475569;
+        }
+
+        input[type="text"],
+        input[type="date"],
+        select {
+            padding: 10px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 14px;
+            font-family: inherit;
+            background: white;
+        }
+
+        .person-tools {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-bottom: 12px;
+            font-size: 14px;
+        }
+
+        .person-tools select {
+            padding: 6px;
+        }
+
+        .small-btn {
+            background: #e0f2fe;
+            color: #0369a1;
+            border: none;
+            padding: 7px 12px;
+            border-radius: 6px;
+            font-size: 13px;
+            cursor: pointer;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .actions {
+            margin-top: 35px;
+        }
+
+        .zip-option {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            font-size: 14px;
+            margin-bottom: 12px;
+        }
+
+        #generateBtn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 15px;
+            width: 100%;
+            border-radius: 8px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        #generateBtn:disabled {
+            opacity: 0.6;
+            cursor: default;
+        }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="forms.js"></script>
+</head>
+
+<body>
+    <div class="container">
+        <h1>מילוי טפסי הוועדה המקומית - עומר</h1>
+
+        <h2>1. בחירת טפסים</h2>
+        <div class="stages" id="stages"></div>
+
+        <h2>2. פרטים</h2>
+        <p class="hint" id="noFormsHint">יש לבחור טפסים, ויופיעו כאן רק השדות שהם צריכים.</p>
+        <div id="fields"></div>
+
+        <div class="actions">
+            <label class="zip-option"><input type="checkbox" id="asZip"> הורדה כקובץ ZIP אחד במקום קבצים נפרדים</label>
+            <button id="generateBtn" onclick="generate()">מלא והורד את הטפסים שנבחרו</button>
+        </div>
+    </div>
+
+    <script>
+        const STAGES = {
+            start: 'תחילת עבודות',
+            during: 'מהלך ביצוע',
+            final: 'תעודת גמר'
+        };
+
+        // שדות הבקשה. key = השם שמופיע בתבניות ({{key|...}})
+        const PROJECT_FIELDS = [
+            { key: 'authority', label: 'רשות הרישוי', value: 'עומר' },
+            { key: 'nature', label: 'מהות הבקשה' },
+            { key: 'city', label: 'יישוב', value: 'עומר' },
+            { key: 'street', label: 'רחוב' },
+            { key: 'houseNum', label: 'מס\' בית' },
+            { key: 'block', label: 'גוש' },
+            { key: 'parcel', label: 'חלקה' },
+            { key: 'plot', label: 'מגרש לפי תכנית' },
+            { key: 'requestNum', label: 'מס\' בקשה להיתר' },
+            { key: 'permitNum', label: 'מס\' היתר' },
+            { key: 'fileNum', label: 'מס\' תיק בניין' },
+            { key: 'controlInstitute', label: 'שם מכון הבקרה' }
+        ];
+
+        const DATE_FIELDS = [
+            { key: 'date', label: 'תאריך חתימה', today: true },
+            { key: 'startDate', label: 'מועד צפוי לתחילת העבודה' },
+            { key: 'markingDate', label: 'תאריך סימון מתווה הבניין' },
+            { key: 'visitDate', label: 'תאריך הביקורת באתר' },
+            { key: 'foundationsDate', label: 'תאריך בדיקת היסודות' }
+        ];
+
+        const PEOPLE = [
+            { role: 'owner', title: 'בעל ההיתר / המבקש' },
+            { role: 'supervisor', title: 'אחראי לביקורת על הביצוע' },
+            { role: 'subSupervisor', title: 'אחראי משנה לביקורת על הביצוע' },
+            { role: 'skeleton', title: 'אחראי לביצוע שלד הבניין' },
+            { role: 'contractor', title: 'קבלן רשום' },
+            { role: 'coordinator', title: 'אחראי לתיאום עם מכון הבקרה' },
+            { role: 'surveyor', title: 'מודד מוסמך' },
+            { role: 'architect', title: 'עורך בקשה ראשי' },
+            { role: 'structural', title: 'עורך משנה הנדסת מבנים' },
+            { role: 'subEditor', title: 'עורך משנה' },
+            { role: 'worker', title: 'עובד שערך ביקורים לפיקוח עליון' }
+        ];
+
+        const PERSON_FIELDS = [
+            { field: 'name', label: 'שם מלא' },
+            { field: 'id', label: 'ת.ז. / ח.פ.' },
+            { field: 'license', label: 'מ.ר. / מס\' רישיון' },
+            { field: 'licenseExpiry', label: 'תוקף רישיון קבלן', date: true },
+            { field: 'phone', label: 'טלפון' },
+            { field: 'email', label: 'מייל' },
+            { field: 'address', label: 'כתובת' }
+        ];
+
+        // שדות שמחושבים מתוך שדות אחרים
+        const COMPUTED = {
+            siteAddressBlockParcel: ['street', 'houseNum', 'city', 'block', 'parcel']
+        };
+
+        // ---------- בניית הדף ----------
+
+        function buildStages() {
+            const container = document.getElementById('stages');
+            for (const [stage, title] of Object.entries(STAGES)) {
+                const box = document.createElement('div');
+                box.className = 'stage';
+                box.innerHTML = `<div class="stage-title"><span>${title}</span><button type="button">בחר הכל</button></div>`;
+                box.querySelector('button').onclick = () => {
+                    const boxes = box.querySelectorAll('input');
+                    const allChecked = [...boxes].every(b => b.checked);
+                    boxes.forEach(b => { b.checked = !allChecked; });
+                    updateVisibleFields();
+                };
+                for (const form of FORMS.filter(f => f.stage === stage)) {
+                    const option = document.createElement('label');
+                    option.className = 'form-option';
+                    const note = form.keys.length ? '' : ' <span class="hint">(טופס סרוק, יורד ריק)</span>';
+                    option.innerHTML = `<input type="checkbox" value="${form.id}"><span><span class="form-id">${form.id}</span> ${form.title}${note}</span>`;
+                    option.querySelector('input').onchange = updateVisibleFields;
+                    box.appendChild(option);
+                }
+                container.appendChild(box);
+            }
+        }
+
+        function fieldHtml(key, label, type = 'text', value = '') {
+            return `<div class="form-group" data-key="${key}"><label>${label}</label><input type="${type}" id="${key}" value="${value}"></div>`;
+        }
+
+        function buildFields() {
+            const container = document.getElementById('fields');
+            let html = `<div class="section"><h3>פרטי הבקשה והמקרקעין</h3><div class="grid">`;
+            html += PROJECT_FIELDS.map(f => fieldHtml(f.key, f.label, 'text', f.value || '')).join('');
+            html += `</div></div><div class="section"><h3>תאריכים</h3><div class="grid">`;
+            const today = new Date().toISOString().slice(0, 10);
+            html += DATE_FIELDS.map(f => fieldHtml(f.key, f.label, 'date', f.today ? today : '')).join('');
+            html += `</div></div>`;
+            for (const p of PEOPLE) {
+                html += `<div class="section person" data-role="${p.role}"><h3>${p.title}</h3>
+                    <div class="person-tools">
+                        <select><option value="">בחירה מאנשי צוות שמורים...</option></select>
+                        <button type="button" class="small-btn save">שמירת הפרטים לפעם הבאה</button>
+                        <button type="button" class="small-btn delete">מחיקה מהשמורים</button>
+                    </div><div class="grid">`;
+                html += PERSON_FIELDS.map(f => fieldHtml(`${p.role}.${f.field}`, f.label, f.date ? 'date' : 'text')).join('');
+                html += `</div></div>`;
+            }
+            container.innerHTML = html;
+
+            document.querySelectorAll('.person').forEach(section => {
+                const role = section.dataset.role;
+                section.querySelector('select').onchange = e => {
+                    const person = loadPeople()[e.target.value];
+                    if (person) PERSON_FIELDS.forEach(f => { document.getElementById(`${role}.${f.field}`).value = person[f.field] || ''; });
+                };
+                section.querySelector('.save').onclick = () => savePerson(role);
+                section.querySelector('.delete').onclick = () => deletePerson(section.querySelector('select').value);
+            });
+            refreshPeopleLists();
+        }
+
+        // מציג רק שדות שמופיעים בטפסים שנבחרו
+        function updateVisibleFields() {
+            const selected = selectedForms();
+            const used = new Set();
+            for (const form of selected) {
+                for (const key of form.keys) {
+                    used.add(key);
+                    (COMPUTED[key] || []).forEach(k => used.add(k));
+                    if (key === 'signerName') used.add(`${form.signer}.name`);
+                    if (key === 'signerId') used.add(`${form.signer}.id`);
+                }
+            }
+            document.querySelectorAll('[data-key]').forEach(el => el.classList.toggle('hidden', !used.has(el.dataset.key)));
+            document.querySelectorAll('.section').forEach(section => {
+                section.classList.toggle('hidden', !section.querySelector('[data-key]:not(.hidden)'));
+            });
+            document.getElementById('noFormsHint').classList.toggle('hidden', selected.length > 0);
+        }
+
+        function selectedForms() {
+            const ids = [...document.querySelectorAll('#stages input:checked')].map(b => b.value);
+            return FORMS.filter(f => ids.includes(f.id));
+        }
+
+        // ---------- אנשי צוות שמורים (נשמרים בדפדפן הזה בלבד) ----------
+
+        const PEOPLE_STORAGE = 'omerForms.people';
+
+        function loadPeople() {
+            try {
+                return JSON.parse(localStorage.getItem(PEOPLE_STORAGE)) || {};
+            } catch (e) {
+                return {};
+            }
+        }
+
+        function storePeople(people) {
+            try {
+                localStorage.setItem(PEOPLE_STORAGE, JSON.stringify(people));
+            } catch (e) {
+                alert('לא ניתן לשמור בדפדפן הזה.');
+            }
+            refreshPeopleLists();
+        }
+
+        function savePerson(role) {
+            const person = {};
+            PERSON_FIELDS.forEach(f => { person[f.field] = document.getElementById(`${role}.${f.field}`).value.trim(); });
+            if (!person.name) return alert('יש למלא שם לפני השמירה.');
+            const people = loadPeople();
+            people[person.name] = person;
+            storePeople(people);
+            alert(`${person.name} נשמר/ה. מעכשיו אפשר לבחור מהרשימה בכל אחד מבעלי התפקידים.`);
+        }
+
+        function deletePerson(name) {
+            if (!name) return alert('יש לבחור קודם מהרשימה את מי למחוק.');
+            if (!confirm(`למחוק את ${name} מהשמורים?`)) return;
+            const people = loadPeople();
+            delete people[name];
+            storePeople(people);
+        }
+
+        function refreshPeopleLists() {
+            const names = Object.keys(loadPeople()).sort((a, b) => a.localeCompare(b, 'he'));
+            document.querySelectorAll('.person select').forEach(select => {
+                select.length = 1;
+                names.forEach(name => select.add(new Option(name, name)));
+            });
+        }
+
+        // ---------- מילוי התבניות ----------
+
+        function formatDate(iso) {
+            const [y, m, d] = iso.split('-');
+            return `${d}/${m}/${y}`;
+        }
+
+        function collectValues() {
+            const values = {};
+            document.querySelectorAll('#fields input').forEach(input => {
+                const v = input.value.trim();
+                values[input.id] = input.type === 'date' && v ? formatDate(v) : v;
+            });
+            const address = [[values.street, values.houseNum].filter(Boolean).join(' '), values.city].filter(Boolean).join(', ');
+            const blockParcel = [values.block && `גוש ${values.block}`, values.parcel && `חלקה ${values.parcel}`].filter(Boolean).join(' ');
+            values.siteAddressBlockParcel = [address, blockParcel].filter(Boolean).join(', ');
+            return values;
+        }
+
+        const escapeXml = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+        // כל שדה בתבנית הוא ריצת טקסט אחת: {{key|הטקסט המקורי}}.
+        // אם יש ערך - הוא נכתב בשחור. אם אין - חוזר הטקסט המקורי (<השלם מידע> או קו ריק).
+        const TAG_RUN = /<w:r><w:rPr>((?:(?!<\/w:rPr>).)*)<\/w:rPr><w:t xml:space="preserve">\{\{([^|}]+)\|([^}]*)\}\}<\/w:t><\/w:r>/gs;
+
+        function fillXml(xml, values) {
+            return xml.replace(TAG_RUN, (match, rPr, key, original) => {
+                const value = values[key];
+                if (value) {
+                    return `<w:r><w:rPr>${rPr.replace(/<w:color [^>]*\/>/g, '')}</w:rPr><w:t xml:space="preserve">${escapeXml(value)}</w:t></w:r>`;
+                }
+                const text = /^[_.]*$/.test(original) ? original : `<${original}>`;
+                return `<w:r><w:rPr>${rPr}</w:rPr><w:t xml:space="preserve">${escapeXml(text)}</w:t></w:r>`;
+            });
+        }
+
+        async function fillForm(form, values) {
+            const response = await fetch(`templates/${form.id}.docx`);
+            if (!response.ok) throw new Error(`לא הצלחנו לטעון את ${form.id}`);
+            const zip = await JSZip.loadAsync(await response.arrayBuffer());
+            // signerName / signerId = פרטי מי שחותם על הטופס הזה
+            const formValues = { ...values, signerName: values[`${form.signer}.name`] || '', signerId: values[`${form.signer}.id`] || '' };
+            for (const name of Object.keys(zip.files)) {
+                if (/^word\/(document|header\d*|footer\d*)\.xml$/.test(name)) {
+                    zip.file(name, fillXml(await zip.file(name).async('string'), formValues));
+                }
+            }
+            return zip.generateAsync({ type: 'blob', mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+        }
+
+        function fileName(form) {
+            const name = form.title.startsWith('טופס') ? form.title : `${form.id} - ${form.title}`;
+            return name.replace(/["/\\:*?<>|]/g, '') + '.docx';
+        }
+
+        function download(blob, name) {
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = name;
+            link.click();
+            setTimeout(() => URL.revokeObjectURL(link.href), 10000);
+        }
+
+        async function generate() {
+            const forms = selectedForms();
+            if (!forms.length) return alert('יש לבחור לפחות טופס אחד.');
+            const btn = document.getElementById('generateBtn');
+            btn.disabled = true;
+            btn.innerText = 'מכין טפסים... נא להמתין';
+            const values = collectValues();
+            const failed = [];
+            const zip = document.getElementById('asZip').checked ? new JSZip() : null;
+            try {
+                for (const form of forms) {
+                    try {
+                        const blob = await fillForm(form, values);
+                        if (zip) {
+                            zip.file(fileName(form), blob);
+                        } else {
+                            download(blob, fileName(form));
+                            await new Promise(r => setTimeout(r, 300)); // דפדפנים חוסמים לפעמים הורדות צמודות מדי
+                        }
+                    } catch (e) {
+                        console.error(e);
+                        failed.push(form.id);
+                    }
+                }
+                if (zip) download(await zip.generateAsync({ type: 'blob' }), 'טפסים ממולאים.zip');
+                if (failed.length) alert(`לא הצלחנו להכין את הטפסים: ${failed.join(', ')}`);
+            } finally {
+                btn.disabled = false;
+                btn.innerText = 'מלא והורד את הטפסים שנבחרו';
+            }
+        }
+
+        buildStages();
+        buildFields();
+        updateVisibleFields();
+    </script>
+</body>
+
+</html>
