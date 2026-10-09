@@ -167,7 +167,7 @@
         // שני האתרים משתמשים באותו טופס ובאותן קואורדינטות, ההבדל הוא רק בקבצי ה-PDF
         const SITES = {
             rami: { title: 'מילוי אוטומטי של טפסי רמ"י', folder: 'rami', filePrefix: '' },
-            agro: { title: 'מילוי אוטומטי של טפסי רמ"י - אגרו וולטאי', folder: 'agro', filePrefix: 'אגרו_' }
+            agro: { title: 'מילוי אוטומטי של טפסי רמ"י - אגרו', folder: 'agro', filePrefix: 'אגרו_' }
         };
         const site = SITES[new URLSearchParams(location.search).get('site')] || SITES.rami;
         document.title = site.title;
