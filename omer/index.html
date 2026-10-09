@@ -293,7 +293,8 @@
                     const option = document.createElement('label');
                     option.className = 'form-option';
                     const note = form.keys.length ? '' : ' <span class="hint">(טופס סרוק, יורד ריק)</span>';
-                    option.innerHTML = `<input type="checkbox" value="${form.id}"><span><span class="form-id">${form.id}</span> ${form.title}${note}</span>`;
+                    const label = form.title.startsWith('טופס') ? form.title : `<span class="form-id">${form.id}</span> ${form.title}`;
+                    option.innerHTML = `<input type="checkbox" value="${form.id}"><span>${label}${note}</span>`;
                     option.querySelector('input').onchange = updateVisibleFields;
                     box.appendChild(option);
                 }
