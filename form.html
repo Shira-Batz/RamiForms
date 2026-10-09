@@ -193,29 +193,13 @@
         // fontkit הופך בעצמו את כל המחרוזת כשהאות הראשונה בה עברית (כולל המספרים - זה מקור הבאג).
         // לכן מציירים את הטקסט הוויזואלי בחלקים: חלק עברי (ללא אותיות לטיניות) נשלח הפוך
         // ו-fontkit מחזיר אותו לסדר הנכון, וחלק ללא עברית נשלח כמו שהוא.
-        // angle: זווית הטקסט בדף (במעלות). הטקסט מתקדם בכיוון הזווית.
-        function drawVisualText(page, text, x, y, size, font, color, angle = 0) {
+        function drawVisualText(page, text, x, y, size, font, color) {
             const visual = toVisual(text);
             const chunks = visual.match(/[\u0590-\u05FF](?:[^A-Za-z\u00C0-\u024F]*[\u0590-\u05FF])?|[^\u0590-\u05FF]+/g) || [];
-            const rad = angle * Math.PI / 180;
             for (const chunk of chunks) {
                 const toDraw = HEBREW.test(chunk) ? [...chunk].reverse().join('') : chunk;
-                page.drawText(toDraw, { x, y, size, font, color, rotate: PDFLib.degrees(angle) });
-                const width = font.widthOfTextAtSize(chunk, size);
-                x += width * Math.round(Math.cos(rad));
-                y += width * Math.round(Math.sin(rad));
-            }
-        }
-
-        // ממיר נקודה כפי שרואים אותה על המסך (x משמאל, top מלמעלה) לקואורדינטות של הדף.
-        // נחוץ לקבצים שנשמרו מסובבים (למשל טופס 1 של אגרו, ששמור לרוחב עם סיבוב של 90 מעלות).
-        function toPageCoords(page, x, top) {
-            const { width, height } = page.getSize();
-            switch (((page.getRotation().angle % 360) + 360) % 360) {
-                case 90: return { x: top, y: x, angle: 90 };
-                case 180: return { x: width - x, y: top, angle: 180 };
-                case 270: return { x: width - top, y: height - x, angle: 270 };
-                default: return { x, y: 842 - top, angle: 0 };
+                page.drawText(toDraw, { x, y, size, font, color });
+                x += font.widthOfTextAtSize(chunk, size);
             }
         }
 
@@ -249,9 +233,7 @@
                 const { PDFDocument, rgb } = PDFLib;
 
                 const drawField = (page, text, x, y, font) => {
-                    if (!text) return;
-                    const pos = toPageCoords(page, x, y);
-                    drawVisualText(page, text, pos.x, pos.y, 10, font, rgb(0, 0, 0), pos.angle);
+                    if (text) drawVisualText(page, text, x, 842 - y, 10, font, rgb(0, 0, 0));
                 };
 
                 const processForm = async (inputName, outputName, mappingFields) => {
