@@ -190,7 +190,7 @@
         }
 
         function withUnit(value, unit) {
-            return value.trim() ? `${value.trim()} ${unit}` : '';
+            return value ? `${value} ${unit}` : '';
         }
 
         async function fetchLocalPDF(filename) {
@@ -204,31 +204,15 @@
             btn.innerText = 'מייצר טפסים... נא להמתין';
             btn.disabled = true;
 
-            const d = {
-                firstName1: document.getElementById('firstName1').value,
-                lastName1: document.getElementById('lastName1').value,
-                fullName1: `${document.getElementById('firstName1').value} ${document.getElementById('lastName1').value}`,
-                idNum1: document.getElementById('idNum1').value,
-                firstName2: document.getElementById('firstName2').value,
-                lastName2: document.getElementById('lastName2').value,
-                fullName2: `${document.getElementById('firstName2').value} ${document.getElementById('lastName2').value}`,
-                idNum2: document.getElementById('idNum2').value,
-                contractNum: document.getElementById('contractNum').value,
-                city: document.getElementById('city').value,
-                street: document.getElementById('street').value,
-                houseNum: document.getElementById('houseNum').value,
-                farmNum: document.getElementById('farmNum').value,
-                mailBox: document.getElementById('mailBox').value,
-                zipCode: document.getElementById('zipCode').value,
-                block: document.getElementById('block').value,
-                parcel: document.getElementById('parcel').value,
-                plot: document.getElementById('plot').value,
-                plan: document.getElementById('plan').value,
-                totalArea: withUnit(document.getElementById('totalArea').value, 'מ"ר'),
-                livingArea: withUnit(document.getElementById('livingArea').value, 'מ"ר'),
-                email: document.getElementById('email').value,
-                region: document.getElementById('region').value
-            };
+            // כל שדה בטופס נשמר לפי ה-id שלו (d.city, d.street וכו')
+            const d = {};
+            document.querySelectorAll('.grid input').forEach(input => {
+                d[input.id] = input.value.trim();
+            });
+            d.fullName1 = `${d.firstName1} ${d.lastName1}`.trim();
+            d.fullName2 = `${d.firstName2} ${d.lastName2}`.trim();
+            d.totalArea = withUnit(d.totalArea, 'מ"ר');
+            d.livingArea = withUnit(d.livingArea, 'מ"ר');
 
             try {
                 const fontBytes = Uint8Array.from(atob(fontBase64), c => c.charCodeAt(0)).buffer;
