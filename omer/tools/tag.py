@@ -106,6 +106,24 @@ def replace_span(p, start, end, tag, blue=True):
         if not ''.join(x.text or '' for x in r.iter(q('t'))) and len([c for c in r if c.tag not in (q('rPr'), q('t'))]) == 0:
             r.getparent().remove(r)
 
+OWNER_TYPES = ['private', 'corp', 'body261']  # ☐ אדם פרטי  ☐ תאגיד  ☐ גוף כהגדרתו בסעיף 261 ד'
+
+def tag_extras(root):
+    """Tag the owner-type checkboxes and the 'חתימה: ____' signature line."""
+    used = []
+    for p in root.iter(q('p')):
+        full = ''.join(t.text or '' for t in texts(p))
+        if 'אדם פרטי' in full and 'תאגיד' in full:
+            boxes = [m.start() for m in re.finditer('☐', full)][:len(OWNER_TYPES)]
+            for pos, kind in reversed(list(zip(boxes, OWNER_TYPES))):
+                replace_span(p, pos, pos + 1, f'{{{{ownerType={kind}|☐}}}}', blue=False)
+                used.append(f'ownerType={kind}')
+        m = re.match(r'\s*חתימה\s*:\s*(_{3,})', full)
+        if m:
+            replace_span(p, m.start(1), m.end(1), f'{{{{signature|{m.group(1)}}}}}', blue=False)
+            used.append('signature')
+    return used
+
 def signer_of(root):
     paras = [''.join(t.text or '' for t in p.iter(q('t'))).strip() for p in root.iter(q('p'))]
     paras = [x for x in paras if x]
@@ -124,6 +142,7 @@ def tag_file(src, dst):
             root = etree.fromstring(data)
             if item.filename == 'word/document.xml': signer = signer_of(root)
             for p in root.iter(q('p')): process_para(p, report)
+            if item.filename == 'word/document.xml': report += [(k, '', '') for k in tag_extras(root)]
             data = etree.tostring(root, xml_declaration=True, encoding='UTF-8', standalone=True)
         zout.writestr(item, data)
     zout.close()

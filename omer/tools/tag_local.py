@@ -1,14 +1,14 @@
 """Tag the blank lines of Omer's local forms using a per-form ordered mapping."""
 import copy, re, sys, zipfile, json
 from lxml import etree
-from tag import q, replace_span, texts, XML_SPACE
+from tag import q, replace_span, texts, XML_SPACE, tag_extras
 from blanks import BLANK
 
 MAPS = {  # blank index -> field key (None = leave blank, e.g. signature lines)
     '1.2': ['plot', 'fileNum', 'parcel', 'city', 'requestNum', 'nature', 'owner.name', 'owner.address', 'owner.phone'],
-    '4.1': ['date', 'skeleton.name', 'skeleton.license', 'foundationsDate', 'plot', 'street', 'city', None, None],
-    '5.1': ['fileNum', 'skeleton.name', 'skeleton.id', 'skeleton.address', None, 'block', 'parcel', 'permitNum'],
-    '6.1': ['fileNum', 'skeleton.name', 'skeleton.id', 'skeleton.license', 'skeleton.address', 'siteAddressBlockParcel', 'permitNum', None],
+    '4.1': ['date', 'skeleton.name', 'skeleton.license', 'foundationsDate', 'plot', 'street', 'city', 'signerName', 'signature'],
+    '5.1': ['fileNum', 'skeleton.name', 'skeleton.id', 'skeleton.address', None, 'block', 'parcel', 'permitNum', 'signature'],
+    '6.1': ['fileNum', 'skeleton.name', 'skeleton.id', 'skeleton.license', 'skeleton.address', 'siteAddressBlockParcel', 'permitNum', 'signature'],
     'פרטי-התקשרות': ['nature', 'city', 'street', 'houseNum', 'block', 'parcel', 'plot', 'requestNum', 'owner.name', 'date', None],
 }
 TABLE_ROLES = ['owner', 'architect', 'supervisor', 'skeleton', 'contractor']
@@ -50,6 +50,7 @@ def main(src, dst, name):
             root = etree.fromstring(data)
             used += tag_blanks(root, MAPS[name])
             if name == 'פרטי-התקשרות': used += tag_roles_table(root)
+            used += tag_extras(root)
             data = etree.tostring(root, xml_declaration=True, encoding='UTF-8', standalone=True)
         zout.writestr(item, data)
     zout.close()
