@@ -87,7 +87,13 @@
             color: var(--primary);
             cursor: pointer;
             font-size: 13px;
-            padding: 0;
+            padding: 3px 8px;
+            border-radius: 4px;
+            transition: background-color 0.15s;
+        }
+
+        .stage-title button:hover {
+            background: #e0f2fe;
         }
 
         .form-option {
@@ -95,8 +101,15 @@
             gap: 8px;
             align-items: flex-start;
             font-size: 14px;
-            padding: 4px 0;
+            padding: 4px 6px;
+            margin: 0 -6px;
+            border-radius: 4px;
             cursor: pointer;
+            transition: background-color 0.15s;
+        }
+
+        .form-option:hover {
+            background: #f1f5f9;
         }
 
         .form-option input {
@@ -159,6 +172,26 @@
             border-radius: 6px;
             font-size: 13px;
             cursor: pointer;
+            transition: background-color 0.15s;
+        }
+
+        .small-btn:hover {
+            background: #bae6fd;
+        }
+
+        .signature-actions input::file-selector-button {
+            background: #f1f5f9;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 5px 10px;
+            margin-inline-end: 8px;
+            cursor: pointer;
+            font-family: inherit;
+            transition: background-color 0.15s;
+        }
+
+        .signature-actions input::file-selector-button:hover {
+            background: #e2e8f0;
         }
 
         .signature-box {
@@ -215,6 +248,11 @@
             font-size: 18px;
             font-weight: bold;
             cursor: pointer;
+            transition: background-color 0.15s;
+        }
+
+        #generateBtn:hover:not(:disabled) {
+            background: #0369a1;
         }
 
         #generateBtn:disabled {
@@ -325,7 +363,7 @@
                     const boxes = box.querySelectorAll('input');
                     const allChecked = [...boxes].every(b => b.checked);
                     boxes.forEach(b => { b.checked = !allChecked; });
-                    updateVisibleFields();
+                    updateVisibleFields(); // מעדכן גם את הטקסט של הכפתור
                 };
                 for (const form of FORMS.filter(f => f.stage === stage)) {
                     const option = document.createElement('label');
@@ -421,6 +459,15 @@
                 section.classList.toggle('hidden', !section.querySelector('[data-key]:not(.hidden)'));
             });
             document.getElementById('noFormsHint').classList.toggle('hidden', selected.length > 0);
+            updateStageButtons();
+        }
+
+        // "בחר הכל" הופך ל"הסר הכל" כשכל הטפסים בשלב מסומנים
+        function updateStageButtons() {
+            document.querySelectorAll('.stage').forEach(stage => {
+                const allChecked = [...stage.querySelectorAll('input')].every(b => b.checked);
+                stage.querySelector('.stage-title button').innerText = allChecked ? 'הסר הכל' : 'בחר הכל';
+            });
         }
 
         // ---------- חתימות ----------
