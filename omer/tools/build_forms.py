@@ -18,14 +18,14 @@ FORMS = [
     ('start', 'ג-11', 'הצהרת אחראי לתיאום עם מכון הבקרה', 'coordinator'),
     ('start', 'ג-12', 'אישור מודד מוסמך בדבר סימון מתווה הבניין', 'surveyor'),
     ('start', 'ג-13', 'בקשה לאישור תחילת עבודות', 'supervisor'),
-    ('start', 'פרטי-התקשרות', 'טופס פרטי התקשרות - מינוי בעלי תפקידים', None),
-    ('start', '1.2', 'טופס 1.2 - התחייבות המבקש: טרם ביצוע תשתיות', None),
+    ('start', 'פרטי-התקשרות', 'טופס פרטי התקשרות - מינוי בעלי תפקידים', 'owner'),
+    ('start', '1.2', 'טופס 1.2 - התחייבות המבקש: טרם ביצוע תשתיות', 'owner'),
     ('start', '3.1', 'טופס 3.1 - התחייבות המבקש: טרם תחילת עבודות', None),
     ('during', 'ד-1', 'דיווח אחראי לביקורת על הביצוע על עריכת ביקורת באתר', 'supervisor'),
     ('during', 'ד-2', 'דיווח אחראי משנה לביקורת על הביצוע על עריכת ביקורת באתר', 'subSupervisor'),
-    ('during', '4.1', 'טופס 4.1 - התאמת היסודות וגובה 0.00', None),
-    ('during', '5.1', 'טופס 5.1 - תצהיר האחראי לביצוע השלד (ממ"ד)', None),
-    ('during', '6.1', 'טופס 6.1 - תצהיר אחראי לביצוע שלד הבניין', None),
+    ('during', '4.1', 'טופס 4.1 - התאמת היסודות וגובה 0.00', 'skeleton'),
+    ('during', '5.1', 'טופס 5.1 - תצהיר האחראי לביצוע השלד (ממ"ד)', 'skeleton'),
+    ('during', '6.1', 'טופס 6.1 - תצהיר אחראי לביצוע שלד הבניין', 'skeleton'),
     ('final', 'ה-1', 'הצהרת עורך בקשה ראשי', 'architect'),
     ('final', 'ה-2', 'הצהרת עורך משנה הנדסת מבנים', 'structural'),
     ('final', 'ה-3', 'הצהרת עורך משנה', 'subEditor'),
@@ -48,7 +48,7 @@ if __name__ == '__main__':
     out = []
     for stage, id, title, signer in FORMS:
         keys = keys_of(f'templates/{id}.docx')
-        assert signer or not {'signerName', 'signerId'} & set(keys), f'{id} needs a signer'
+        assert signer or not {'signerName', 'signerId', 'signature'} & set(keys), f'{id} needs a signer'
         out.append(dict(id=id, stage=stage, title=title, signer=signer, keys=keys))
     lines = ',\n'.join('    ' + json.dumps(o, ensure_ascii=False) for o in out)
     with open('forms.js', 'w', encoding='utf-8') as f:
