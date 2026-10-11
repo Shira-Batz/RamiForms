@@ -313,11 +313,11 @@
         ];
 
         const PEOPLE = [
-            { role: 'owner', title: 'בעל ההיתר / המבקש', signature: true },
-            { role: 'supervisor', title: 'אחראי לביקורת על הביצוע', signature: true },
+            { role: 'owner', title: 'בעל ההיתר / המבקש' },
+            { role: 'supervisor', title: 'אחראי לביקורת על הביצוע' },
             { role: 'subSupervisor', title: 'אחראי משנה לביקורת על הביצוע' },
-            { role: 'skeleton', title: 'אחראי לביצוע שלד הבניין', signature: true },
-            { role: 'contractor', title: 'קבלן רשום', signature: true },
+            { role: 'skeleton', title: 'אחראי לביצוע שלד הבניין' },
+            { role: 'contractor', title: 'קבלן רשום' },
             { role: 'coordinator', title: 'אחראי לתיאום עם מכון הבקרה' },
             { role: 'surveyor', title: 'מודד מוסמך' },
             { role: 'architect', title: 'עורך בקשה ראשי' },
@@ -402,12 +402,11 @@
                         <option value="">לא לסמן</option>${OWNER_TYPES.map(t => `<option value="${t.value}">${t.label}</option>`).join('')}</select></div>`;
                 }
                 html += PERSON_FIELDS.map(f => fieldHtml(`${p.role}.${f.field}`, f.label, f.date ? 'date' : 'text')).join('');
-                if (p.signature) {
-                    html += `<div class="form-group" data-key="${p.role}.signature"><label>תמונת חתימה</label>
-                        <div class="signature-box"><img class="hidden" alt="חתימה"><span class="hint">לא הועלתה חתימה</span></div>
-                        <div class="signature-actions"><input type="file" accept="image/*">
-                        <button type="button" class="small-btn remove-signature">הסרה</button></div></div>`;
-                }
+                // שדה החתימה מוצג רק אם נבחר טופס שהאדם הזה חותם עליו
+                html += `<div class="form-group" data-key="${p.role}.signature"><label>תמונת חתימה</label>
+                    <div class="signature-box"><img class="hidden" alt="חתימה"><span class="hint">לא הועלתה חתימה</span></div>
+                    <div class="signature-actions"><input type="file" accept="image/*">
+                    <button type="button" class="small-btn remove-signature">הסרה</button></div></div>`;
                 html += `</div></div>`;
             }
             container.innerHTML = html;
@@ -418,22 +417,20 @@
                     const person = loadPeople()[e.target.value];
                     if (!person) return;
                     PERSON_FIELDS.forEach(f => { document.getElementById(`${role}.${f.field}`).value = person[f.field] || ''; });
-                    if (section.querySelector('.signature-box')) setSignature(role, person.signature || null);
+                    setSignature(role, person.signature || null);
                 };
                 const fileInput = section.querySelector('input[type="file"]');
-                if (fileInput) {
-                    fileInput.onchange = async () => {
-                        if (!fileInput.files[0]) return;
-                        try {
-                            setSignature(role, await processSignature(fileInput.files[0]));
-                        } catch (e) {
-                            console.error(e);
-                            alert('לא הצלחנו לקרוא את התמונה. כדאי לנסות תמונה ברורה של החתימה על רקע לבן.');
-                        }
-                        fileInput.value = '';
-                    };
-                    section.querySelector('.remove-signature').onclick = () => setSignature(role, null);
-                }
+                fileInput.onchange = async () => {
+                    if (!fileInput.files[0]) return;
+                    try {
+                        setSignature(role, await processSignature(fileInput.files[0]));
+                    } catch (e) {
+                        console.error(e);
+                        alert('לא הצלחנו לקרוא את התמונה. כדאי לנסות תמונה ברורה של החתימה על רקע לבן.');
+                    }
+                    fileInput.value = '';
+                };
+                section.querySelector('.remove-signature').onclick = () => setSignature(role, null);
                 section.querySelector('.save').onclick = () => savePerson(role);
                 section.querySelector('.delete').onclick = () => deletePerson(section.querySelector('.person-tools select').value);
             });
