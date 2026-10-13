@@ -1,5 +1,5 @@
 """Build <site>/forms.js (the list of forms + which fields each one uses) from <site>/templates/*.docx.
-Run from the repository root:  python3 tools/build_forms.py omer
+Run from the completion-forms folder:  python3 tools/build_forms.py omer
 To add a form: put its tagged template in <site>/templates/ and add a line to SITES below."""
 import glob, json, os, re, sys, zipfile
 

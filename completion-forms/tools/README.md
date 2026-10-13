@@ -1,6 +1,7 @@
 # כלים להכנת התבניות
 
-משמשים את כל אתרי טפסי הוועדות (`general/`, `omer/`, ובעתיד שדות דן).
+משמשים את כל אתרי טפסי הוועדות שבתיקייה `completion-forms/` (`general/`, `omer/`, ובעתיד שדות דן).
+כל הפקודות כאן רצות מתוך התיקייה `completion-forms`.
 הקוד של האתרים עצמם משותף: `shared/forms-app.js` ו-`shared/forms-app.css`.
 כל אתר הוא תיקייה עם `index.html` קצר (כותרת וערכי ברירת מחדל), `forms.js` ותיקיית `templates/`.
 
@@ -14,7 +15,7 @@
   `cd tools && python3 tag_local.py מקור.docx יעד.docx שם-הטופס`
 - `blanks.py` - מציג את הקווים הריקים בטופס עם מספר לכל אחד, כדי לכתוב את הרשימה ב-`MAPS`.
 - `build_forms.py` - בונה את `forms.js` של אתר (רשימת הטפסים והשדות של כל אחד).
-  מריצים מתיקיית הריפו: `python3 tools/build_forms.py general`
+  `python3 tools/build_forms.py general`
 
 קבצי `.doc` ישנים צריך להמיר קודם ל-`.docx` (למשל: `soffice --headless --convert-to docx קובץ.doc`).
 
@@ -22,4 +23,4 @@
 1. מתייגים את הטפסים לתוך `<אתר>/templates/`.
 2. מוסיפים את רשימת הטפסים ל-`SITES` ב-`build_forms.py` ומריצים אותו.
 3. מעתיקים את `index.html` מאתר קיים ומשנים כותרת וערכי ברירת מחדל (`SITE`).
-4. מוסיפים קישור בדף הבית `planning.html`.
+4. מוסיפים קישור בדף הבית `index.html` (שבתיקייה הזו).
