@@ -10,8 +10,27 @@ MAPS = {  # blank index -> field key (None = leave blank, e.g. signature lines)
     '5.1': ['fileNum', 'skeleton.name', 'skeleton.id', 'skeleton.address', None, 'block', 'parcel', 'permitNum', 'signature'],
     '6.1': ['fileNum', 'skeleton.name', 'skeleton.id', 'skeleton.license', 'skeleton.address', 'siteAddressBlockParcel', 'permitNum', 'signature'],
     'פרטי-התקשרות': ['nature', 'city', 'street', 'houseNum', 'block', 'parcel', 'plot', 'requestNum', 'owner.name', 'date', None],
+    # מהנדס הוועדה ממלא וחותם בתחתית; רחוב / מס' בית / חלקה / מגרש מחולקים לשני קווים - ממלאים את הראשון
+    'אישור-תחילת-עבודות': ['permitNum', 'nature', 'city', 'street', None, 'houseNum', None, 'block', 'parcel', None, 'plot', None, None, None, None],
 }
 TABLE_ROLES = ['owner', 'architect', 'supervisor', 'skeleton', 'contractor']
+
+# placeholders in angle brackets that aren't in the standard <השלם מידע> format
+PLACEHOLDERS = {
+    'אישור-תחילת-עבודות': {'האחראי לביקורת על הביצוע': 'supervisor.name', 'בעל ההיתר': 'owner.name', 'שם רשות רישוי': 'authority'},
+}
+# forms whose "חתימה:" line is signed by someone outside the team (e.g. the committee engineer)
+NO_SIGNATURE = {'אישור-תחילת-עבודות'}
+
+def tag_placeholders(root, mapping):
+    used = []
+    for p in root.iter(q('p')):
+        full = ''.join(t.text or '' for t in texts(p))
+        for m in reversed(list(re.finditer(r'<([^<>]{2,45})>', full))):
+            key = mapping.get(m.group(1).strip())
+            if key:
+                replace_span(p, m.start(), m.end(), f'{{{{{key}|{m.group(1)}}}}}'); used.append(key)
+    return used
 
 def tag_blanks(root, mapping):
     paras = [p for p in root.iter(q('p')) if not any(a.tag.endswith('Fallback') for a in p.iterancestors())]
@@ -50,7 +69,8 @@ def main(src, dst, name):
             root = etree.fromstring(data)
             used += tag_blanks(root, MAPS[name])
             if name == 'פרטי-התקשרות': used += tag_roles_table(root)
-            used += tag_extras(root)
+            used += tag_placeholders(root, PLACEHOLDERS.get(name, {}))
+            if name not in NO_SIGNATURE: used += tag_extras(root)
             data = etree.tostring(root, xml_declaration=True, encoding='UTF-8', standalone=True)
         zout.writestr(item, data)
     zout.close()
