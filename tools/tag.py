@@ -8,16 +8,16 @@ XML_SPACE = '{http://www.w3.org/XML/1998/namespace}space'
 
 ROLE_NAMES = [  # order matters: more specific first
     ('שם האחראי משנה לביקורת', 'subSupervisor'), ('שם אחראי משנה לביקורת', 'subSupervisor'),
-    ('שם האחראי לביקורת', 'supervisor'), ('שם האחראי לביצוע שלד', 'skeleton'),
+    ('שם האחראי לביקורת', 'supervisor'), ('שם האחראי לביצוע שלד', 'skeleton'), ('שם האחראי לביצוע השלד', 'skeleton'),
     ('שם קבלן רשום', 'contractor'), ('תיאום עם מכון הבקרה', 'coordinator'),
     ('שם מודד מוסמך', 'surveyor'), ('שם עורך בקשה ראשי', 'architect'),
     ('שם עורך משנה הנדסת מבנים', 'structural'), ('שם עורך משנה', 'subEditor'),
-    ('שם העובד', 'worker'), ('שם בעל ההיתר', 'owner'),
+    ('שם העובד', 'worker'), ('שם מורשה נגישות', 'accessibility'), ('שם בעל ההיתר', 'owner'),
 ]
 PERSON_FIELDS = [('תוקף רישיון', 'licenseExpiry'), ('רישיון קבלן', 'license'), ('מ.ר', 'license'),
                  ('ח.פ', 'id'), ('ע.מ', 'id'), ('ת.ז', 'id'), ('דרכון', 'id'),
                  ('טלפון', 'phone'), ('מייל', 'email'), ('כתובת', 'address')]
-HEADER = [('מהות הבקשה', 'nature'), ('מגרש לפי תכנית', 'plot'), ('מס\' בית', 'houseNum'),
+HEADER = [('מהות הבקשה', 'nature'), ('מהות ההיתר', 'nature'), ('מגרש לפי תכנית', 'plot'), ('מס\' בית', 'houseNum'),
           ('רחוב', 'street'), ('יישוב', 'city'), ('חלקה', 'parcel'), ('גוש', 'block'),
           ('מס\' בקשה להיתר', 'requestNum'), ('שם מכון הבקרה', 'controlInstitute'),
           ('מס\' היתר', 'permitNum'), ('שם בעל ההיתר', 'owner.name')]
@@ -106,6 +106,24 @@ def replace_span(p, start, end, tag, blue=True):
         if not ''.join(x.text or '' for x in r.iter(q('t'))) and len([c for c in r if c.tag not in (q('rPr'), q('t'))]) == 0:
             r.getparent().remove(r)
 
+def unwrap_content_controls(root):
+    """Word 'content controls' (w:sdt) wrap the <השלם מידע> placeholders in native .docx forms.
+    Replace each one with its content, so the text becomes ordinary text we can tag. Clickable
+    checkboxes stay, except the owner-type ones, which the site checks itself."""
+    W14 = 'http://schemas.microsoft.com/office/word/2010/wordml'
+    for sdt in list(root.iter(q('sdt'))):
+        pr = sdt.find(q('sdtPr'))
+        is_checkbox = pr is not None and pr.find(f'{{{W14}}}checkbox') is not None
+        para = next(sdt.iterancestors(q('p')), None)
+        para_text = ''.join(t.text or '' for t in para.iter(q('t'))) if para is not None else ''
+        if is_checkbox and not ('אדם פרטי' in para_text and 'תאגיד' in para_text):
+            continue
+        content = sdt.find(q('sdtContent'))
+        parent = sdt.getparent(); i = parent.index(sdt)
+        for child in (list(content) if content is not None else []):
+            parent.insert(i, child); i += 1
+        parent.remove(sdt)
+
 OWNER_TYPES = ['private', 'corp', 'body261']  # ☐ אדם פרטי  ☐ תאגיד  ☐ גוף כהגדרתו בסעיף 261 ד'
 
 def tag_extras(root):
@@ -140,6 +158,7 @@ def tag_file(src, dst):
         data = zin.read(item.filename)
         if re.match(r'word/(document|header\d*|footer\d*)\.xml$', item.filename):
             root = etree.fromstring(data)
+            unwrap_content_controls(root)
             if item.filename == 'word/document.xml': signer = signer_of(root)
             for p in root.iter(q('p')): process_para(p, report)
             if item.filename == 'word/document.xml': report += [(k, '', '') for k in tag_extras(root)]
