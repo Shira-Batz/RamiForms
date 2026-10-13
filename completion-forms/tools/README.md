@@ -1,6 +1,6 @@
 # כלים להכנת התבניות
 
-משמשים את כל אתרי טפסי הוועדות שבתיקייה `completion-forms/` (`general/`, `omer/`, ובעתיד שדות דן).
+משמשים את כל אתרי טפסי הוועדות שבתיקייה `completion-forms/` (`general/`, `omer/`, `sdot-dan/`).
 כל הפקודות כאן רצות מתוך התיקייה `completion-forms`.
 הקוד של האתרים עצמם משותף: `shared/forms-app.js` ו-`shared/forms-app.css`.
 כל אתר הוא תיקייה עם `index.html` קצר (כותרת וערכי ברירת מחדל), `forms.js` ותיקיית `templates/`.
@@ -16,6 +16,14 @@
 - `blanks.py` - מציג את הקווים הריקים בטופס עם מספר לכל אחד, כדי לכתוב את הרשימה ב-`MAPS`.
 - `build_forms.py` - בונה את `forms.js` של אתר (רשימת הטפסים והשדות של כל אחד).
   `python3 tools/build_forms.py general`
+
+## טפסי PDF (שדות דן)
+בשדות דן הטפסים הם חוברות PDF עם קווים ריקים (`____`). האתר כותב את הטקסט מעל כל קו, לפי המיקום שלו.
+- `pdf_blanks.py` - מציג את הקווים הריקים בכל עמוד, עם התווית שלפני כל קו.
+  `python3 tools/pdf_blanks.py חוברת.pdf 3`
+- `build_pdf_forms.py` - מפצל את החוברות לטופס PDF נפרד לכל מסמך (`sdot-dan/templates/`), מוצא את מיקום הקווים
+  ובונה את `sdot-dan/forms.js`. השיוך של כל קו לשדה כתוב ברשימה `SITES` שבקובץ.
+  `python3 tools/build_pdf_forms.py sdot-dan סט-טפסים-לאישור-תחילת-עבודות.pdf חוברת-הנחיות-וטפסים.pdf`
 
 קבצי `.doc` ישנים צריך להמיר קודם ל-`.docx` (למשל: `soffice --headless --convert-to docx קובץ.doc`).
 

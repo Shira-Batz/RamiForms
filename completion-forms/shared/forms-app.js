@@ -20,7 +20,9 @@ const PROJECT_FIELDS = [
     { key: 'requestNum', label: 'מס\' בקשה להיתר' },
     { key: 'permitNum', label: 'מס\' היתר' },
     { key: 'fileNum', label: 'מס\' תיק בניין' },
-    { key: 'controlInstitute', label: 'שם מכון הבקרה' }
+    { key: 'controlInstitute', label: 'שם מכון הבקרה' },
+    { key: 'guaranteeNum', label: 'מס\' ערבות בנקאית' },
+    { key: 'guaranteeAmount', label: 'סכום הערבות (בלי ₪)' }
 ];
 
 const DATE_FIELDS = [
@@ -28,7 +30,10 @@ const DATE_FIELDS = [
     { key: 'startDate', label: 'מועד צפוי לתחילת העבודה' },
     { key: 'markingDate', label: 'תאריך סימון מתווה הבניין' },
     { key: 'visitDate', label: 'תאריך הביקורת באתר' },
-    { key: 'foundationsDate', label: 'תאריך בדיקת היסודות' }
+    { key: 'foundationsDate', label: 'תאריך בדיקת היסודות' },
+    { key: 'measureDate', label: 'תאריך הבדיקה והמדידה' },
+    { key: 'permitDate', label: 'תאריך מתן ההיתר' },
+    { key: 'guaranteeDate', label: 'תאריך הערבות' }
 ];
 
 const PEOPLE = [
@@ -381,9 +386,6 @@ function fillXml(xml, values) {
 }
 
 async function fillForm(form, values) {
-    const response = await fetch(`templates/${form.id}.docx`);
-    if (!response.ok) throw new Error(`לא הצלחנו לטעון את ${form.id}`);
-    const zip = await JSZip.loadAsync(await response.arrayBuffer());
     // signerName / signerId = פרטי מי שחותם על הטופס הזה
     const formValues = {
         ...values,
@@ -391,6 +393,10 @@ async function fillForm(form, values) {
         signerId: values[`${form.signer}.id`] || '',
         signature: signatures[form.signer] || null
     };
+    if (form.type === 'pdf') return fillPdfForm(form, formValues);
+    const response = await fetch(`templates/${form.id}.docx`);
+    if (!response.ok) throw new Error(`לא הצלחנו לטעון את ${form.id}`);
+    const zip = await JSZip.loadAsync(await response.arrayBuffer());
     for (const name of Object.keys(zip.files)) {
         if (/^word\/(document|header\d*|footer\d*)\.xml$/.test(name)) {
             zip.file(name, fillXml(await zip.file(name).async('string'), formValues));
@@ -398,6 +404,77 @@ async function fillForm(form, values) {
     }
     if (formValues.signatureUsed) await addSignatureImage(zip, formValues.signature);
     return zip.generateAsync({ type: 'blob', mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+}
+
+// ---------- טפסי PDF (שדות דן) ----------
+// בטופס PDF כותבים את הטקסט מעל הקווים הריקים, לפי המיקום שנשמר ב-forms.js.
+
+let pdfFontBytes = null;
+
+async function fillPdfForm(form, values) {
+    const { PDFDocument, rgb } = PDFLib;
+    const response = await fetch(`templates/${form.id}.pdf`);
+    if (!response.ok) throw new Error(`לא הצלחנו לטעון את ${form.id}`);
+    const doc = await PDFDocument.load(await response.arrayBuffer());
+    doc.registerFontkit(fontkit);
+    if (!pdfFontBytes) pdfFontBytes = await (await fetch('../shared/font.ttf')).arrayBuffer();
+    const font = await doc.embedFont(pdfFontBytes, { subset: true });
+    const pages = doc.getPages();
+    let signatureImage = null;
+
+    for (const field of form.fields) {
+        const page = pages[field.page];
+        const baseline = page.getHeight() - (field.top + field.size * 0.8) + 1.5; // קצת מעל הקו
+        const right = field.x1 - 2;
+        const room = field.x1 - field.x0 - 4;
+
+        if (field.key === 'signature') {
+            if (!values.signature) continue;
+            signatureImage = signatureImage || await doc.embedPng(values.signature.data);
+            let height = 26;
+            let width = height * values.signature.width / values.signature.height;
+            if (width > room) {
+                width = room;
+                height = width * values.signature.height / values.signature.width;
+            }
+            page.drawImage(signatureImage, { x: right - width, y: baseline - 3, width, height });
+            continue;
+        }
+
+        const text = values[field.key];
+        if (!text) continue;
+        let size = 10; // מקטינים את הגופן אם הטקסט ארוך מהקו
+        while (size > 6 && font.widthOfTextAtSize(text, size) > room) size -= 0.5;
+        const width = font.widthOfTextAtSize(text, size);
+        drawVisualText(page, text, right - width, baseline, size, font, rgb(0, 0, 0)); // מיושר לימין הקו
+    }
+    return new Blob([await doc.save()], { type: 'application/pdf' });
+}
+
+// סידור טקסט מעורב (עברית / מספרים / אנגלית) לציור ב-PDF - כמו באתר טפסי רמ"י
+const HEBREW = /[\u0590-\u05FF]/;
+
+function toVisual(str) {
+    if (!HEBREW.test(str)) return str;
+    const bidi = bidi_js();
+    const levels = bidi.getEmbeddingLevels(str, 'rtl');
+    const chars = str.split('');
+    bidi.getMirroredCharactersMap(str, levels.levels).forEach((ch, i) => { chars[i] = ch; });
+    bidi.getReorderSegments(str, levels).forEach(([start, end]) => {
+        chars.splice(start, end - start + 1, ...chars.slice(start, end + 1).reverse());
+    });
+    return chars.join('');
+}
+
+// fontkit הופך מחרוזת שמתחילה בעברית, לכן מציירים בחלקים: חלק עברי נשלח הפוך וחלק בלי עברית כמו שהוא
+function drawVisualText(page, text, x, y, size, font, color) {
+    const visual = toVisual(text);
+    const chunks = visual.match(/[\u0590-\u05FF](?:[^A-Za-z\u00C0-\u024F]*[\u0590-\u05FF])?|[^\u0590-\u05FF]+/g) || [];
+    for (const chunk of chunks) {
+        const toDraw = HEBREW.test(chunk) ? [...chunk].reverse().join('') : chunk;
+        page.drawText(toDraw, { x, y, size, font, color });
+        x += font.widthOfTextAtSize(chunk, size);
+    }
 }
 
 // מוסיף את קובץ התמונה לקובץ ה-Word ומקשר אותו (rIdSignature)
@@ -415,7 +492,7 @@ async function addSignatureImage(zip, signature) {
 
 function fileName(form) {
     const name = hasFormNumber(form) ? `${form.id} - ${form.title}` : form.title;
-    return name.replace(/["/\\:*?<>|]/g, '') + '.docx';
+    return name.replace(/["/\\:*?<>|]/g, '') + (form.type === 'pdf' ? '.pdf' : '.docx');
 }
 
 function download(blob, name) {
