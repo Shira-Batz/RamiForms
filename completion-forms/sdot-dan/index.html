@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>מילוי טפסי תעודות גמר - שדות דן</title>
+    <link rel="stylesheet" href="../shared/forms-app.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <!-- טפסי שדות דן הם PDF: ספריות לכתיבה על PDF ולסידור טקסט מעורב עברית/מספרים -->
+    <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+    <script src="https://unpkg.com/@pdf-lib/fontkit@0.0.4/dist/fontkit.umd.min.js"></script>
+    <script src="https://unpkg.com/bidi-js@1.0.3/dist/bidi.min.js"></script>
+    <script src="forms.js"></script>
+    <script>
+        // הגדרות האתר: ערכי ברירת מחדל לשדות "רשות הרישוי" ו"יישוב"
+        const SITE = { authority: 'שדות דן', city: '' };
+    </script>
+</head>
+
+<body>
+    <div class="container">
+        <a href="../index.html" class="back">→ לדף הבית</a>
+        <h1>מילוי טפסי תעודות גמר - שדות דן</h1>
+
+        <h2>1. בחירת טפסים</h2>
+        <div class="stages" id="stages"></div>
+
+        <h2>2. פרטים</h2>
+        <p class="hint" id="noFormsHint">יש לבחור טפסים, ויופיעו כאן רק השדות שהם צריכים.</p>
+        <div id="fields"></div>
+
+        <div class="actions">
+            <label class="zip-option"><input type="checkbox" id="asZip"> הורדה כקובץ ZIP אחד במקום קבצים נפרדים</label>
+            <button id="generateBtn" onclick="generate()">מלא והורד את הטפסים שנבחרו</button>
+        </div>
+    </div>
+
+    <script src="../shared/forms-app.js"></script>
+</body>
+
+</html>
