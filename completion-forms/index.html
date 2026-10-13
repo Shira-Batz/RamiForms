@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>מילוי טפסי ועדות התכנון</title>
+    <title>מילוי טפסים לתעודות גמר</title>
     <style>
         :root {
             --primary: #0284c7;
@@ -46,7 +46,7 @@
         }
 
         .links a,
-        .links .soon {
+        .links .disabled {
             display: block;
             background: var(--primary);
             color: white;
@@ -63,28 +63,22 @@
             background: #0369a1;
         }
 
-        .links .soon {
+        /* כפתור לא פעיל (שדות דן - בינתיים) */
+        .links .disabled {
             background: #e2e8f0;
             color: #64748b;
-            cursor: default;
-        }
-
-        .links small {
-            display: block;
-            font-weight: normal;
-            font-size: 13px;
-            margin-top: 6px;
+            cursor: not-allowed;
         }
     </style>
 </head>
 
 <body>
     <div class="container">
-        <h1>מילוי טפסי ועדות התכנון</h1>
+        <h1>מילוי טפסים לתעודות גמר</h1>
         <div class="links">
-            <a href="general/index.html">טפסים כלליים<small>מינהל התכנון</small></a>
-            <a href="omer/index.html">עומר<small>הוועדה המקומית עומר</small></a>
-            <div class="soon">שדות דן<small>בקרוב</small></div>
+            <a href="general/index.html">כללי</a>
+            <a href="omer/index.html">עומר</a>
+            <span class="disabled" aria-disabled="true">שדות דן</span>
         </div>
     </div>
 </body>
