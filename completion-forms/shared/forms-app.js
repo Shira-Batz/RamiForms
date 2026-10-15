@@ -5,7 +5,7 @@ const STAGES = {
     start: 'תחילת עבודות',
     during: 'מהלך ביצוע',
     final: 'תעודת גמר',
-    during_final: 'מהלך ביצוע ותעודת גמר' // חוברת אחת לשני השלבים (שדות דן)
+    during_final: 'מהלך הביצוע ותעודת גמר' // חוברת אחת לשני השלבים (שדות דן)
 };
 
 // שדות הבקשה. key = השם שמופיע בתבניות ({{key|...}})
@@ -84,6 +84,7 @@ const hasFormNumber = form => /^[א-ת]-\d+$/.test(form.id);
 
 function buildStages() {
     const container = document.getElementById('stages');
+    if (SITE.toggleButtons) return buildToggleButtons(container);
     for (const [stage, title] of Object.entries(STAGES)) {
         if (!FORMS.some(f => f.stage === stage)) continue; // שלב בלי טפסים באתר הזה
         const box = document.createElement('div');
@@ -105,6 +106,22 @@ function buildStages() {
             box.appendChild(option);
         }
         container.appendChild(box);
+    }
+}
+
+// אתר שבו כל שלב הוא טופס אחד (שדות דן): כפתור לכל שלב, לחיצה בוחרת ולחיצה נוספת מבטלת
+function buildToggleButtons(container) {
+    container.classList.add('toggle-buttons');
+    for (const form of FORMS) {
+        const button = document.createElement('label');
+        button.className = 'toggle-form';
+        button.innerHTML = `<input type="checkbox" value="${form.id}"><span>${STAGES[form.stage]}</span>`;
+        const input = button.querySelector('input');
+        input.onchange = () => {
+            button.classList.toggle('selected', input.checked);
+            updateVisibleFields();
+        };
+        container.appendChild(button);
     }
 }
 
@@ -212,6 +229,7 @@ function updateVisibleFields() {
 // "בחר הכל" הופך ל"הסר הכל" כשכל הטפסים בשלב מסומנים
 function updateStageButtons() {
     document.querySelectorAll('.stage').forEach(stage => {
+        if (!stage.querySelector('.stage-title button')) return;
         const allChecked = [...stage.querySelectorAll('input')].every(b => b.checked);
         stage.querySelector('.stage-title button').innerText = allChecked ? 'הסר הכל' : 'בחר הכל';
     });
