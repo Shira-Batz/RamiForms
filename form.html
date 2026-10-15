@@ -65,7 +65,8 @@
             color: #475569;
         }
 
-        input[type="text"] {
+        input[type="text"],
+        input[type="date"] {
             padding: 10px;
             border: 1px solid #cbd5e1;
             border-radius: 6px;
@@ -126,7 +127,7 @@
     <script src="https://unpkg.com/bidi-js@1.0.3/dist/bidi.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <!-- מיקומי השדות בטפסים (נוצר ע"י tools/build_rami_fields.py) -->
-    <script src="rami-fields.js?v=f7ba15bb"></script>
+    <script src="rami-fields.js?v=b13a849e"></script>
 </head>
 
 <body>
@@ -169,6 +170,7 @@
             <div class="form-group"><label>שטח מגורים (מ"ר)</label><input type="text" id="livingArea"></div>
             <div class="form-group"><label>דואר אלקטרוני</label><input type="text" id="email" value="info@apv.co.il">
             </div>
+            <div class="form-group"><label>תאריך (הצהרת בעלי זכויות)</label><input type="date" id="signDate"></div>
         </div>
 
         <label class="zip-option"><input type="checkbox" id="asZip"> הורדה כקובץ ZIP אחד במקום קבצים נפרדים</label>
@@ -182,6 +184,7 @@
             agro: { title: 'מילוי אוטומטי של טפסי רמ"י - אגרו', folder: 'agro', filePrefix: 'אגרו_' }
         };
         const site = SITES[new URLSearchParams(location.search).get('site')] || SITES.dunam;
+        document.getElementById('signDate').value = new Date().toISOString().slice(0, 10); // ברירת מחדל: היום
         document.title = site.title;
         document.getElementById('pageTitle').innerText = site.title;
 
@@ -262,6 +265,10 @@
             document.querySelectorAll('.grid input').forEach(input => {
                 d[input.id] = input.value.trim();
             });
+            if (d.signDate) { // מהפורמט של הדפדפן (2026-10-15) לפורמט של הטופס (15/10/2026)
+                const [y, m, day] = d.signDate.split('-');
+                d.signDate = `${day}/${m}/${y}`;
+            }
             d.fullName1 = `${d.firstName1} ${d.lastName1}`.trim();
             d.fullName2 = `${d.firstName2} ${d.lastName2}`.trim();
             d.applicantNames = [d.fullName1, d.fullName2].filter(Boolean).join(', ');
