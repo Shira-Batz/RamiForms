@@ -112,6 +112,10 @@ function fieldHtml(key, label, type = 'text', value = '') {
     return `<div class="form-group" data-key="${key}"><label>${label}</label><input type="${type}" id="${key}" value="${value}"></div>`;
 }
 
+// קובץ שנגרר ונפל מחוץ למסגרת חתימה לא יפתח את התמונה במקום האתר
+window.addEventListener('dragover', e => e.preventDefault());
+window.addEventListener('drop', e => e.preventDefault());
+
 function buildFields() {
     const container = document.getElementById('fields');
     let html = `<div class="section"><h3>פרטי הבקשה והמקרקעין</h3><div class="grid">`;
@@ -134,7 +138,7 @@ function buildFields() {
         html += PERSON_FIELDS.map(f => fieldHtml(`${p.role}.${f.field}`, f.label, f.date ? 'date' : 'text')).join('');
         // שדה החתימה מוצג רק אם נבחר טופס שהאדם הזה חותם עליו
         html += `<div class="form-group" data-key="${p.role}.signature"><label>תמונת חתימה</label>
-            <div class="signature-box"><img class="hidden" alt="חתימה"><span class="hint">לא הועלתה חתימה</span></div>
+            <div class="signature-box"><img class="hidden" alt="חתימה"><span class="hint">אפשר לגרור לכאן תמונה של החתימה</span></div>
             <div class="signature-actions"><input type="file" accept="image/*">
             <button type="button" class="small-btn remove-signature">הסרה</button></div></div>`;
         html += `</div></div>`;
@@ -149,16 +153,32 @@ function buildFields() {
             PERSON_FIELDS.forEach(f => { document.getElementById(`${role}.${f.field}`).value = person[f.field] || ''; });
             setSignature(role, person.signature || null);
         };
-        const fileInput = section.querySelector('input[type="file"]');
-        fileInput.onchange = async () => {
-            if (!fileInput.files[0]) return;
+        const loadSignatureFile = async file => {
+            if (!file) return;
+            if (!file.type.startsWith('image/')) return alert('יש לבחור קובץ תמונה (למשל JPG או PNG).');
             try {
-                setSignature(role, await processSignature(fileInput.files[0]));
+                setSignature(role, await processSignature(file));
             } catch (e) {
                 console.error(e);
                 alert('לא הצלחנו לקרוא את התמונה. כדאי לנסות תמונה ברורה של החתימה על רקע לבן.');
             }
+        };
+        const fileInput = section.querySelector('input[type="file"]');
+        fileInput.onchange = async () => {
+            await loadSignatureFile(fileInput.files[0]);
             fileInput.value = '';
+        };
+        // גרירת קובץ חתימה מהמחשב אל המסגרת
+        const dropBox = section.querySelector('.signature-box');
+        dropBox.ondragover = e => {
+            e.preventDefault();
+            dropBox.classList.add('dragover');
+        };
+        dropBox.ondragleave = () => dropBox.classList.remove('dragover');
+        dropBox.ondrop = e => {
+            e.preventDefault();
+            dropBox.classList.remove('dragover');
+            loadSignatureFile(e.dataTransfer.files[0]);
         };
         section.querySelector('.remove-signature').onclick = () => setSignature(role, null);
         section.querySelector('.save').onclick = () => savePerson(role);
