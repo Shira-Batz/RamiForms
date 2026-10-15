@@ -4,7 +4,8 @@
 const STAGES = {
     start: 'תחילת עבודות',
     during: 'מהלך ביצוע',
-    final: 'תעודת גמר'
+    final: 'תעודת גמר',
+    during_final: 'מהלך ביצוע ותעודת גמר' // חוברת אחת לשני השלבים (שדות דן)
 };
 
 // שדות הבקשה. key = השם שמופיע בתבניות ({{key|...}})
@@ -84,6 +85,7 @@ const hasFormNumber = form => /^[א-ת]-\d+$/.test(form.id);
 function buildStages() {
     const container = document.getElementById('stages');
     for (const [stage, title] of Object.entries(STAGES)) {
+        if (!FORMS.some(f => f.stage === stage)) continue; // שלב בלי טפסים באתר הזה
         const box = document.createElement('div');
         box.className = 'stage';
         box.innerHTML = `<div class="stage-title"><span>${title}</span><button type="button">בחר הכל</button></div>`;
@@ -420,7 +422,7 @@ async function fillPdfForm(form, values) {
     if (!pdfFontBytes) pdfFontBytes = await (await fetch('../shared/font.ttf')).arrayBuffer();
     const font = await doc.embedFont(pdfFontBytes, { subset: true });
     const pages = doc.getPages();
-    let signatureImage = null;
+    const signatureImages = {};
 
     for (const field of form.fields) {
         const page = pages[field.page];
@@ -428,16 +430,18 @@ async function fillPdfForm(form, values) {
         const right = field.x1 - 2;
         const room = field.x1 - field.x0 - 4;
 
-        if (field.key === 'signature') {
-            if (!values.signature) continue;
-            signatureImage = signatureImage || await doc.embedPng(values.signature.data);
+        if (field.key === 'signature' || field.key.endsWith('.signature')) {
+            // "signature" = מי שחותם על הטופס; "owner.signature" וכו' = בחוברת שבה כל מסמך נחתם ע"י מישהו אחר
+            const signature = field.key === 'signature' ? values.signature : signatures[field.key.split('.')[0]];
+            if (!signature) continue;
+            signatureImages[field.key] = signatureImages[field.key] || await doc.embedPng(signature.data);
             let height = 26;
-            let width = height * values.signature.width / values.signature.height;
+            let width = height * signature.width / signature.height;
             if (width > room) {
                 width = room;
-                height = width * values.signature.height / values.signature.width;
+                height = width * signature.height / signature.width;
             }
-            page.drawImage(signatureImage, { x: right - width, y: baseline - 3, width, height });
+            page.drawImage(signatureImages[field.key], { x: right - width, y: baseline - 3, width, height });
             continue;
         }
 

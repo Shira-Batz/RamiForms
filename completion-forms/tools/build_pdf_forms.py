@@ -1,11 +1,10 @@
-"""Build a PDF-based site (Sdot Dan): split the committee's booklets into one PDF per form,
-find the position of every '____' blank, and write <site>/forms.js with the field coordinates.
+"""Build a PDF-based site (Sdot Dan): the committee's booklets stay whole (one PDF each, like the
+originals). Find the position of every '____' blank, map it to a field, and write <site>/forms.js.
 Run from the completion-forms folder:
     python3 tools/build_pdf_forms.py sdot-dan path/to/start.pdf path/to/book.pdf
 The booklets are given in the order of the SOURCES list below."""
-import json, os, sys
+import json, os, shutil, sys
 import pdfplumber
-from pypdf import PdfReader, PdfWriter
 from pdf_blanks import blanks
 
 # The blank-line header that opens most forms ("פרטי הבקשה והמקרקעין" + "פרטי בעל ההיתר"),
@@ -29,6 +28,12 @@ worker = person('worker')
 SITES = {
     'sdot-dan': {
         'sources': ['start', 'book'],
+        # Each booklet is one downloadable form: source -> (stage, id, title)
+        'booklets': {
+            'start': ('start', 'start-booklet', 'סט טפסים לאישור תחילת עבודות - שדות דן'),
+            'book': ('during_final', 'completion-booklet', 'חוברת טפסים למהלך הביצוע ולתעודת גמר - שדות דן'),
+        },
+        # The documents inside the booklets, and who signs each one ("שם / חתימה" go to that person):
         # (stage, id, title, signer, source, pages (1-based), {page: keys for the blanks after the header})
         # None = a blank the site doesn't fill. A page with header=False has no standard header.
         'forms': [
@@ -107,29 +112,34 @@ def page_fields(page, keys):
     return fields
 
 
+def signer_key(key, signer):
+    """The signature block of each document belongs to whoever signs that document."""
+    return {'signerName': f'{signer}.name', 'signature': f'{signer}.signature'}.get(key, key)
+
+
 if __name__ == '__main__':
     site, paths = sys.argv[1], sys.argv[2:]
     cfg = SITES[site]
     sources = dict(zip(cfg['sources'], paths))
     os.makedirs(f'{site}/templates', exist_ok=True)
     out = []
-    for stage, id, title, signer, source, pages, mapping in cfg['forms']:
-        reader, writer = PdfReader(sources[source]), PdfWriter()
-        for n in pages:
-            writer.add_page(reader.pages[n - 1])
-        with open(f'{site}/templates/{id}.pdf', 'wb') as f:
-            writer.write(f)
+    for source, (stage, id, title) in cfg['booklets'].items():
+        shutil.copyfile(sources[source], f'{site}/templates/{id}.pdf')
         fields = []
         with pdfplumber.open(sources[source]) as pdf:
-            for i, n in enumerate(pages):
-                if n in mapping:
-                    fields += [dict(page=i, **f) for f in page_fields(pdf.pages[n - 1], mapping[n])]
+            for _, doc_id, _, signer, doc_source, pages, mapping in cfg['forms']:
+                if doc_source != source:
+                    continue
+                for n in pages:
+                    if n in mapping:
+                        for f in page_fields(pdf.pages[n - 1], mapping[n]):
+                            assert signer or f['key'] not in ('signerName', 'signature'), f'{doc_id} needs a signer'
+                            fields.append(dict(page=n - 1, **{**f, 'key': signer_key(f['key'], signer)}))
         keys = sorted({f['key'] for f in fields})
-        assert signer or not {'signerName', 'signature'} & set(keys), f'{id} needs a signer'
-        out.append(dict(id=id, stage=stage, title=title, signer=signer, type='pdf', keys=keys, fields=fields))
+        out.append(dict(id=id, stage=stage, title=title, signer=None, type='pdf', keys=keys, fields=fields))
     lines = ',\n'.join('    ' + json.dumps(o, ensure_ascii=False) for o in out)
     with open(f'{site}/forms.js', 'w', encoding='utf-8') as f:
         f.write('// נוצר אוטומטית ע"י tools/build_pdf_forms.py - לא לערוך ידנית.\n'
-                '// טפסי PDF: fields = מיקום כל קו ריק בטופס (בנקודות, מראש העמוד) והשדה שנכתב עליו.\n'
+                '// טפסי PDF: fields = מיקום כל קו ריק בחוברת (עמוד, נקודות מראש העמוד) והשדה שנכתב עליו.\n'
                 'const FORMS = [\n' + lines + '\n];\n')
-    print(f'{site}/forms.js: {len(out)} forms, {sum(len(o["fields"]) for o in out)} fields')
+    print(f'{site}/forms.js: {len(out)} booklets, {sum(len(o["fields"]) for o in out)} fields')
