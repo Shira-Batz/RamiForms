@@ -126,7 +126,7 @@
     <script src="https://unpkg.com/bidi-js@1.0.3/dist/bidi.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <!-- מיקומי השדות בטפסים (נוצר ע"י tools/build_rami_fields.py) -->
-    <script src="rami-fields.js"></script>
+    <script src="rami-fields.js?v=f7ba15bb"></script>
 </head>
 
 <body>
@@ -220,7 +220,7 @@
         }
 
         async function fetchLocalFile(filename) {
-            const response = await fetch(filename);
+            const response = await fetch(filename, { cache: 'no-cache' }); // תמיד הגרסה העדכנית של הטפסים
             if (!response.ok) throw new Error(`לא הצלחנו לטעון את הקובץ: ${filename}`);
             return await response.arrayBuffer();
         }
