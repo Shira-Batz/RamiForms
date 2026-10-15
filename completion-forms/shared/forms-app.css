@@ -195,6 +195,12 @@ select {
     justify-content: center;
     margin-bottom: 6px;
     background: white;
+    transition: background-color 0.15s;
+}
+
+.signature-box.dragover {
+    border: 2px dashed var(--primary);
+    background: #e0f2fe;
 }
 
 .signature-box img {
