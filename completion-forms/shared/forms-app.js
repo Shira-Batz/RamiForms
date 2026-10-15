@@ -434,7 +434,7 @@ async function fillForm(form, values) {
         signature: signatures[form.signer] || null
     };
     if (form.type === 'pdf') return fillPdfForm(form, formValues);
-    const response = await fetch(`templates/${form.id}.docx`);
+    const response = await fetch(`templates/${form.id}.docx`, { cache: 'no-cache' });
     if (!response.ok) throw new Error(`לא הצלחנו לטעון את ${form.id}`);
     const zip = await JSZip.loadAsync(await response.arrayBuffer());
     for (const name of Object.keys(zip.files)) {
@@ -453,11 +453,11 @@ let pdfFontBytes = null;
 
 async function fillPdfForm(form, values) {
     const { PDFDocument, rgb } = PDFLib;
-    const response = await fetch(`templates/${form.id}.pdf`);
+    const response = await fetch(`templates/${form.id}.pdf`, { cache: 'no-cache' });
     if (!response.ok) throw new Error(`לא הצלחנו לטעון את ${form.id}`);
     const doc = await PDFDocument.load(await response.arrayBuffer());
     doc.registerFontkit(fontkit);
-    if (!pdfFontBytes) pdfFontBytes = await (await fetch('../shared/font.ttf')).arrayBuffer();
+    if (!pdfFontBytes) pdfFontBytes = await (await fetch('../shared/font.ttf', { cache: 'no-cache' })).arrayBuffer();
     const font = await doc.embedFont(pdfFontBytes, { subset: true });
     const pages = doc.getPages();
     const signatureImages = {};
