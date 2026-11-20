@@ -433,7 +433,7 @@ async function fillForm(form, values) {
         signerId: values[`${form.signer}.id`] || '',
         signature: signatures[form.signer] || null
     };
-    if (form.type === 'pdf') return fillPdfForm(form, formValues);
+    if (asPdf(form)) return fillPdfForm(form, formValues);
     const response = await fetch(`templates/${form.id}.docx`, { cache: 'no-cache' });
     if (!response.ok) throw new Error(`לא הצלחנו לטעון את ${form.id}`);
     const zip = await JSZip.loadAsync(await response.arrayBuffer());
@@ -449,24 +449,50 @@ async function fillForm(form, values) {
 // ---------- טפסי PDF (שדות דן) ----------
 // בטופס PDF כותבים את הטקסט מעל הקווים הריקים, לפי המיקום שנשמר ב-forms.js.
 
-let pdfFontBytes = null;
+// טפסי Word יורדים כ-PDF, אלא אם סומן "הורדה כ-Word". טפסי שדות דן הם PDF תמיד.
+// לכל טופס Word יש גרסת PDF מוכנה (templates-pdf, נבנתה ע"י tools/build_word_pdfs.py) ומיקומי השדות בה (pdfFields).
+function asPdf(form) {
+    if (form.type === 'pdf') return true;
+    const asWord = document.getElementById('asWord');
+    return Boolean(form.pdfFields) && !(asWord && asWord.checked);
+}
+
+const fontCache = {};
+async function loadFont(name) {
+    if (!fontCache[name]) fontCache[name] = (await fetch(`../shared/${name}`, { cache: 'no-cache' })).arrayBuffer();
+    return fontCache[name];
+}
 
 async function fillPdfForm(form, values) {
     const { PDFDocument, rgb } = PDFLib;
-    const response = await fetch(`templates/${form.id}.pdf`, { cache: 'no-cache' });
+    const fromWord = form.type !== 'pdf'; // גרסת ה-PDF של טופס Word
+    const response = await fetch(`${fromWord ? 'templates-pdf' : 'templates'}/${form.id}.pdf`, { cache: 'no-cache' });
     if (!response.ok) throw new Error(`לא הצלחנו לטעון את ${form.id}`);
     const doc = await PDFDocument.load(await response.arrayBuffer());
     doc.registerFontkit(fontkit);
-    if (!pdfFontBytes) pdfFontBytes = await (await fetch('../shared/font.ttf', { cache: 'no-cache' })).arrayBuffer();
-    const font = await doc.embedFont(pdfFontBytes, { subset: true });
+    const font = await doc.embedFont(await loadFont('font.ttf'), { subset: true }); // DejaVu Sans, כמו הטקסט העברי בטפסים
     const pages = doc.getPages();
     const signatureImages = {};
 
-    for (const field of form.fields) {
+    for (const field of fromWord ? form.pdfFields : form.fields) {
         const page = pages[field.page];
-        const baseline = page.getHeight() - (field.top + field.size * 0.8) + 1.5; // קצת מעל הקו
+        const baseline = field.baseline != null
+            ? page.getHeight() - field.baseline                         // בדיוק בשורה של הטקסט המקורי
+            : page.getHeight() - (field.top + field.size * 0.8) + 1.5;  // קצת מעל הקו
         const right = field.x1 - 2;
         const room = field.x1 - field.x0 - 4;
+
+        if (field.key.includes('=')) { // תיבת סימון, למשל ownerType=private: מסמנים X בתוך התיבה
+            const [name, option] = field.key.split('=');
+            if (values[name] !== option) continue;
+            const top = page.getHeight() - field.top, bottom = page.getHeight() - field.bottom;
+            const w = field.x1 - field.x0, h = top - bottom;
+            const x0 = field.x0 + w * 0.22, x1 = field.x1 - w * 0.22;
+            const y0 = bottom + h * 0.28, y1 = top - h * 0.28;
+            page.drawLine({ start: { x: x0, y: y0 }, end: { x: x1, y: y1 }, thickness: 1, color: rgb(0, 0, 0) });
+            page.drawLine({ start: { x: x0, y: y1 }, end: { x: x1, y: y0 }, thickness: 1, color: rgb(0, 0, 0) });
+            continue;
+        }
 
         if (field.key === 'signature' || field.key.endsWith('.signature')) {
             // "signature" = מי שחותם על הטופס; "owner.signature" וכו' = בחוברת שבה כל מסמך נחתם ע"י מישהו אחר
@@ -485,7 +511,7 @@ async function fillPdfForm(form, values) {
 
         const text = values[field.key];
         if (!text) continue;
-        let size = 10; // מקטינים את הגופן אם הטקסט ארוך מהקו
+        let size = Math.min(field.size || 10, 10); // מקטינים את הגופן אם הטקסט ארוך מהקו
         while (size > 6 && font.widthOfTextAtSize(text, size) > room) size -= 0.5;
         const width = font.widthOfTextAtSize(text, size);
         drawVisualText(page, text, right - width, baseline, size, font, rgb(0, 0, 0)); // מיושר לימין הקו
@@ -534,7 +560,7 @@ async function addSignatureImage(zip, signature) {
 
 function fileName(form) {
     const name = hasFormNumber(form) ? `${form.id} - ${form.title}` : form.title;
-    return name.replace(/["/\\:*?<>|]/g, '') + (form.type === 'pdf' ? '.pdf' : '.docx');
+    return name.replace(/["/\\:*?<>|]/g, '') + (asPdf(form) ? '.pdf' : '.docx');
 }
 
 function download(blob, name) {
