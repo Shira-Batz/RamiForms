@@ -433,7 +433,7 @@ async function fillForm(form, values) {
         signerId: values[`${form.signer}.id`] || '',
         signature: signatures[form.signer] || null
     };
-    if (form.type === 'pdf') return fillPdfForm(form, formValues);
+    if (asPdf(form)) return fillPdfForm(form, formValues);
     const response = await fetch(`templates/${form.id}.docx`, { cache: 'no-cache' });
     if (!response.ok) throw new Error(`לא הצלחנו לטעון את ${form.id}`);
     const zip = await JSZip.loadAsync(await response.arrayBuffer());
@@ -449,31 +449,81 @@ async function fillForm(form, values) {
 // ---------- טפסי PDF (שדות דן) ----------
 // בטופס PDF כותבים את הטקסט מעל הקווים הריקים, לפי המיקום שנשמר ב-forms.js.
 
-let pdfFontBytes = null;
+// טפסי Word יורדים כ-PDF, אלא אם סומן "הורדה כ-Word". טפסי שדות דן הם PDF תמיד.
+// לכל טופס Word יש גרסת PDF מוכנה (templates-pdf, נבנתה ע"י tools/build_word_pdfs.py) ומיקומי השדות בה (pdfFields).
+function asPdf(form) {
+    if (form.type === 'pdf') return true;
+    const asWord = document.getElementById('asWord');
+    return Boolean(form.pdfFields) && !(asWord && asWord.checked);
+}
+
+const fontCache = {};
+async function loadFont(name) {
+    if (!fontCache[name]) fontCache[name] = (await fetch(`../shared/${name}`, { cache: 'no-cache' })).arrayBuffer();
+    return fontCache[name];
+}
 
 async function fillPdfForm(form, values) {
     const { PDFDocument, rgb } = PDFLib;
-    const response = await fetch(`templates/${form.id}.pdf`, { cache: 'no-cache' });
+    const fromWord = form.type !== 'pdf'; // גרסת ה-PDF של טופס Word
+    const response = await fetch(`${fromWord ? 'templates-pdf' : 'templates'}/${form.id}.pdf`, { cache: 'no-cache' });
     if (!response.ok) throw new Error(`לא הצלחנו לטעון את ${form.id}`);
     const doc = await PDFDocument.load(await response.arrayBuffer());
     doc.registerFontkit(fontkit);
-    if (!pdfFontBytes) pdfFontBytes = await (await fetch('../shared/font.ttf', { cache: 'no-cache' })).arrayBuffer();
-    const font = await doc.embedFont(pdfFontBytes, { subset: true });
+    const font = await doc.embedFont(await loadFont('font.ttf'), { subset: true }); // DejaVu Sans, כמו הטקסט העברי בטפסים
+    // בטופס Word, כמו ב-Word: עברית ב-DejaVu Sans, ספרות ואנגלית ב-Tahoma (מודגש היכן שהשדה מודגש)
+    const embedded = {};
+    const embed = async name => (embedded[name] = embedded[name] || await doc.embedFont(await loadFont(name), { subset: true }));
+    const fontsFor = async field => fromWord
+        ? { he: await embed(field.bold ? 'font-bold.ttf' : 'font.ttf'), latin: await embed(field.bold ? 'tahoma-bold.ttf' : 'tahoma.ttf') }
+        : { he: font, latin: font };
     const pages = doc.getPages();
     const signatureImages = {};
 
-    for (const field of form.fields) {
+    // הטופס הריק (עם כל ה"<השלם מידע>"), נטען רק אם יש שדה ריק
+    let emptyPages = null;
+    const copyFromEmptyForm = async (form, doc, pages, field) => {
+        if (!emptyPages) {
+            const bytes = await (await fetch(`templates-pdf-empty/${form.id}.pdf`, { cache: 'no-cache' })).arrayBuffer();
+            emptyPages = await doc.embedPdf(bytes, pages.map((_, i) => i));
+        }
         const page = pages[field.page];
-        const baseline = page.getHeight() - (field.top + field.size * 0.8) + 1.5; // קצת מעל הקו
-        const right = field.x1 - 2;
-        const room = field.x1 - field.x0 - 4;
+        const H = page.getHeight();
+        for (const [x0, top, x1, bottom] of field.placeholder) {
+            // מציירים את העמוד הריק רק בתוך המלבן של השדה
+            page.pushOperators(PDFLib.pushGraphicsState(), PDFLib.rectangle(x0, H - bottom, x1 - x0, bottom - top),
+                PDFLib.clip(), PDFLib.endPath());
+            page.drawPage(emptyPages[field.page], { x: 0, y: 0 });
+            page.pushOperators(PDFLib.popGraphicsState());
+        }
+    };
+
+    for (const field of fromWord ? form.pdfFields : form.fields) {
+        const page = pages[field.page];
+        const baseline = field.baseline != null
+            ? page.getHeight() - field.baseline                         // בדיוק בשורה של הטקסט המקורי
+            : page.getHeight() - (field.top + field.size * 0.8) + 1.5;  // קצת מעל הקו
+        const right = fromWord ? field.x1 : field.x1 - 2; // בטופס Word: בדיוק מהמקום שבו התחיל "<השלם מידע>"
+        const room = right - field.x0 - 2;
+
+        if (field.key.includes('=')) { // תיבת סימון, למשל ownerType=private: מסמנים X בתוך התיבה
+            const [name, option] = field.key.split('=');
+            if (values[name] !== option) continue;
+            const top = page.getHeight() - field.top, bottom = page.getHeight() - field.bottom;
+            const w = field.x1 - field.x0, h = top - bottom;
+            const x0 = field.x0 + w * 0.22, x1 = field.x1 - w * 0.22;
+            const y0 = bottom + h * 0.28, y1 = top - h * 0.28;
+            page.drawLine({ start: { x: x0, y: y0 }, end: { x: x1, y: y1 }, thickness: 1, color: rgb(0, 0, 0) });
+            page.drawLine({ start: { x: x0, y: y1 }, end: { x: x1, y: y0 }, thickness: 1, color: rgb(0, 0, 0) });
+            continue;
+        }
 
         if (field.key === 'signature' || field.key.endsWith('.signature')) {
             // "signature" = מי שחותם על הטופס; "owner.signature" וכו' = בחוברת שבה כל מסמך נחתם ע"י מישהו אחר
             const signature = field.key === 'signature' ? values.signature : signatures[field.key.split('.')[0]];
             if (!signature) continue;
             signatureImages[field.key] = signatureImages[field.key] || await doc.embedPng(signature.data);
-            let height = 26;
+            let height = Math.min(26, field.maxHeight || 26);
             let width = height * signature.width / signature.height;
             if (width > room) {
                 width = room;
@@ -484,11 +534,18 @@ async function fillPdfForm(form, values) {
         }
 
         const text = values[field.key];
-        if (!text) continue;
-        let size = 10; // מקטינים את הגופן אם הטקסט ארוך מהקו
-        while (size > 6 && font.widthOfTextAtSize(text, size) > room) size -= 0.5;
-        const width = font.widthOfTextAtSize(text, size);
-        drawVisualText(page, text, right - width, baseline, size, font, rgb(0, 0, 0)); // מיושר לימין הקו
+        if (!text) {
+            // שדה ריק בטופס Word: מעתיקים את "<השלם מידע>" בדיוק כמו שהוא מופיע בטופס הריק (templates-pdf-empty)
+            if (field.placeholder) await copyFromEmptyForm(form, doc, pages, field);
+            continue;
+        }
+        // בטופס Word: בגודל של הטקסט במקום הזה. מקטינים את הגופן רק אם הטקסט ארוך מהמקום הפנוי
+        const fonts = await fontsFor(field);
+        let size = fromWord ? field.size : Math.min(field.size || 10, 10);
+        const latinRatio = (field.sizeLatin || field.size) / field.size;
+        const widthAt = sz => mixedWidth(text, fonts, sz, sz * latinRatio);
+        while (size > 6 && widthAt(size) > room) size -= 0.5;
+        drawMixedText(page, text, right - widthAt(size), baseline, fonts, size, size * latinRatio, rgb(0, 0, 0)); // מיושר לימין
     }
     return new Blob([await doc.save()], { type: 'application/pdf' });
 }
@@ -506,6 +563,24 @@ function toVisual(str) {
         chars.splice(start, end - start + 1, ...chars.slice(start, end + 1).reverse());
     });
     return chars.join('');
+}
+
+// חלקי הטקסט בסדר שבו הם מוצגים משמאל לימין: חלק עברי, וחלק בלי עברית (ספרות, אנגלית, סימנים)
+const visualChunks = text => toVisual(text).match(/[\u0590-\u05FF](?:[^A-Za-z\u00C0-\u024F]*[\u0590-\u05FF])?|[^\u0590-\u05FF]+/g) || [];
+
+function mixedWidth(text, fonts, sizeHe, sizeLatin) {
+    return visualChunks(text).reduce((w, chunk) => w + (HEBREW.test(chunk)
+        ? fonts.he.widthOfTextAtSize(chunk, sizeHe) : fonts.latin.widthOfTextAtSize(chunk, sizeLatin)), 0);
+}
+
+// כמו drawVisualText, עם גופן וגודל נפרדים לעברית ולספרות/אנגלית
+function drawMixedText(page, text, x, y, fonts, sizeHe, sizeLatin, color) {
+    for (const chunk of visualChunks(text)) {
+        const he = HEBREW.test(chunk);
+        const [font, size] = he ? [fonts.he, sizeHe] : [fonts.latin, sizeLatin];
+        page.drawText(he ? [...chunk].reverse().join('') : chunk, { x, y, size, font, color });
+        x += font.widthOfTextAtSize(chunk, size);
+    }
 }
 
 // fontkit הופך מחרוזת שמתחילה בעברית, לכן מציירים בחלקים: חלק עברי נשלח הפוך וחלק בלי עברית כמו שהוא
@@ -534,7 +609,7 @@ async function addSignatureImage(zip, signature) {
 
 function fileName(form) {
     const name = hasFormNumber(form) ? `${form.id} - ${form.title}` : form.title;
-    return name.replace(/["/\\:*?<>|]/g, '') + (form.type === 'pdf' ? '.pdf' : '.docx');
+    return name.replace(/["/\\:*?<>|]/g, '') + (asPdf(form) ? '.pdf' : '.docx');
 }
 
 function download(blob, name) {

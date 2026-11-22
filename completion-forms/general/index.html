@@ -7,7 +7,11 @@
     <title>מילוי טפסי מינהל התכנון - כללי</title>
     <link rel="stylesheet" href="../shared/forms-app.css?v=c7328d35">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-    <script src="forms.js?v=87c6344a"></script>
+    <!-- הטפסים יורדים כ-PDF: ספריות לכתיבה על PDF ולסידור טקסט מעורב עברית/מספרים -->
+    <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+    <script src="https://unpkg.com/@pdf-lib/fontkit@0.0.4/dist/fontkit.umd.min.js"></script>
+    <script src="https://unpkg.com/bidi-js@1.0.3/dist/bidi.min.js"></script>
+    <script src="forms.js?v=8a9b3150"></script>
     <script>
         // הגדרות האתר: ערכי ברירת מחדל לשדות "רשות הרישוי" ו"יישוב"
         const SITE = { authority: '', city: '' };
@@ -28,11 +32,12 @@
 
         <div class="actions">
             <label class="zip-option"><input type="checkbox" id="asZip"> הורדה כקובץ ZIP אחד במקום קבצים נפרדים</label>
+            <label class="zip-option"><input type="checkbox" id="asWord"> הורדה כקובצי Word (לעריכה) במקום PDF</label>
             <button id="generateBtn" onclick="generate()">מלא והורד את הטפסים שנבחרו</button>
         </div>
     </div>
 
-    <script src="../shared/forms-app.js?v=49a6b5f2"></script>
+    <script src="../shared/forms-app.js?v=83de6bc5"></script>
 </body>
 
 </html>
